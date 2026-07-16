@@ -34,7 +34,7 @@ metrics:
   fitness_sla_norm_max: 1.0
 
 dataset:
-  source: examples/sample_dataset.json
+  source: examples/sample_dataset_heavy.json
   format: json
 
 random_seeds:

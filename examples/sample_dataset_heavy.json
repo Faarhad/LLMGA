@@ -1,0 +1,241 @@
+{
+  "epoch_length": 30,
+  "datacenter": {
+    "datacenter_id": "dc_heavy_poisson",
+    "physical_machines": [
+      {
+        "machine_id": "pm1",
+        "cpu_mips": 7000,
+        "memory_mb": 32768,
+        "bandwidth_mbps": 10000,
+        "base_power_watts": 130
+      },
+      {
+        "machine_id": "pm2",
+        "cpu_mips": 7000,
+        "memory_mb": 32768,
+        "bandwidth_mbps": 10000,
+        "base_power_watts": 115
+      }
+    ],
+    "virtual_machines": [
+      {
+        "vm_id": "vm1",
+        "vm_type": "medium",
+        "host_machine_id": "pm1",
+        "cpu_mips": 1200,
+        "memory_mb": 4096,
+        "bandwidth_mbps": 300,
+        "idle_watts": 26,
+        "max_watts": 78,
+        "vcpu_count": 4,
+        "availability_time": 0
+      },
+      {
+        "vm_id": "vm2",
+        "vm_type": "small",
+        "host_machine_id": "pm1",
+        "cpu_mips": 1000,
+        "memory_mb": 2048,
+        "bandwidth_mbps": 220,
+        "idle_watts": 21,
+        "max_watts": 63,
+        "vcpu_count": 2,
+        "availability_time": 0
+      },
+      {
+        "vm_id": "vm3",
+        "vm_type": "small",
+        "host_machine_id": "pm2",
+        "cpu_mips": 1000,
+        "memory_mb": 2048,
+        "bandwidth_mbps": 220,
+        "idle_watts": 21,
+        "max_watts": 63,
+        "vcpu_count": 2,
+        "availability_time": 1
+      },
+      {
+        "vm_id": "vm4",
+        "vm_type": "small",
+        "host_machine_id": "pm2",
+        "cpu_mips": 900,
+        "memory_mb": 2048,
+        "bandwidth_mbps": 200,
+        "idle_watts": 20,
+        "max_watts": 60,
+        "vcpu_count": 2,
+        "availability_time": 0
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "task_id": "t1",
+      "workload_mi": 2600,
+      "arrival_time": 0,
+      "deadline": 4,
+      "cpu_demand_mips": 420,
+      "memory_demand_mb": 512,
+      "io_size_mb": 18
+    },
+    {
+      "task_id": "t2",
+      "workload_mi": 3100,
+      "arrival_time": 0,
+      "deadline": 5,
+      "cpu_demand_mips": 480,
+      "memory_demand_mb": 768,
+      "io_size_mb": 22
+    },
+    {
+      "task_id": "t3",
+      "workload_mi": 2800,
+      "arrival_time": 1,
+      "deadline": 5,
+      "cpu_demand_mips": 450,
+      "memory_demand_mb": 640,
+      "io_size_mb": 20
+    },
+    {
+      "task_id": "t4",
+      "workload_mi": 3600,
+      "arrival_time": 1,
+      "deadline": 6,
+      "cpu_demand_mips": 560,
+      "memory_demand_mb": 896,
+      "io_size_mb": 24
+    },
+    {
+      "task_id": "t5",
+      "workload_mi": 2400,
+      "arrival_time": 1,
+      "deadline": 5,
+      "cpu_demand_mips": 390,
+      "memory_demand_mb": 512,
+      "io_size_mb": 17
+    },
+    {
+      "task_id": "t6",
+      "workload_mi": 4200,
+      "arrival_time": 2,
+      "deadline": 7,
+      "cpu_demand_mips": 620,
+      "memory_demand_mb": 1024,
+      "io_size_mb": 28
+    },
+    {
+      "task_id": "t7",
+      "workload_mi": 3000,
+      "arrival_time": 2,
+      "deadline": 6,
+      "cpu_demand_mips": 470,
+      "memory_demand_mb": 768,
+      "io_size_mb": 22
+    },
+    {
+      "task_id": "t8",
+      "workload_mi": 3400,
+      "arrival_time": 3,
+      "deadline": 8,
+      "cpu_demand_mips": 540,
+      "memory_demand_mb": 896,
+      "io_size_mb": 25
+    },
+    {
+      "task_id": "t9",
+      "workload_mi": 4600,
+      "arrival_time": 3,
+      "deadline": 9,
+      "cpu_demand_mips": 700,
+      "memory_demand_mb": 1152,
+      "io_size_mb": 30
+    },
+    {
+      "task_id": "t10",
+      "workload_mi": 2700,
+      "arrival_time": 4,
+      "deadline": 8,
+      "cpu_demand_mips": 430,
+      "memory_demand_mb": 640,
+      "io_size_mb": 19
+    },
+    {
+      "task_id": "t11",
+      "workload_mi": 3900,
+      "arrival_time": 4,
+      "deadline": 9,
+      "cpu_demand_mips": 600,
+      "memory_demand_mb": 1024,
+      "io_size_mb": 27
+    },
+    {
+      "task_id": "t12",
+      "workload_mi": 3200,
+      "arrival_time": 5,
+      "deadline": 10,
+      "cpu_demand_mips": 500,
+      "memory_demand_mb": 768,
+      "io_size_mb": 23
+    },
+    {
+      "task_id": "t13",
+      "workload_mi": 3500,
+      "arrival_time": 5,
+      "deadline": 10,
+      "cpu_demand_mips": 550,
+      "memory_demand_mb": 896,
+      "io_size_mb": 24
+    },
+    {
+      "task_id": "t14",
+      "workload_mi": 2500,
+      "arrival_time": 6,
+      "deadline": 10,
+      "cpu_demand_mips": 400,
+      "memory_demand_mb": 512,
+      "io_size_mb": 18
+    },
+    {
+      "task_id": "t15",
+      "workload_mi": 4300,
+      "arrival_time": 7,
+      "deadline": 12,
+      "cpu_demand_mips": 660,
+      "memory_demand_mb": 1152,
+      "io_size_mb": 29
+    },
+    {
+      "task_id": "t16",
+      "workload_mi": 2900,
+      "arrival_time": 8,
+      "deadline": 12,
+      "cpu_demand_mips": 460,
+      "memory_demand_mb": 640,
+      "io_size_mb": 21
+    },
+    {
+      "task_id": "t17",
+      "workload_mi": 3700,
+      "arrival_time": 9,
+      "deadline": 14,
+      "cpu_demand_mips": 580,
+      "memory_demand_mb": 896,
+      "io_size_mb": 26
+    },
+    {
+      "task_id": "t18",
+      "workload_mi": 4100,
+      "arrival_time": 10,
+      "deadline": 15,
+      "cpu_demand_mips": 640,
+      "memory_demand_mb": 1024,
+      "io_size_mb": 28
+    }
+  ],
+  "metadata": {
+    "workload_profile": "semi-heavy",
+    "arrival_model": "Poisson-like burst arrivals",
+    "notes": "Arrival times are clustered to emulate Poisson burst behavior and induce moderate SLA violations under realistic scheduling."
+  }
+}
