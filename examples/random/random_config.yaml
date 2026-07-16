@@ -3,7 +3,7 @@ simulation:
   max_events: 10000
 
 scheduler:
-  name: random
+  name: random_scheduler.py
   options:
     seed: 42
 

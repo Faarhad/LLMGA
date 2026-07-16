@@ -231,6 +231,15 @@
       "cpu_demand_mips": 640,
       "memory_demand_mb": 1024,
       "io_size_mb": 28
+    },
+    {
+      "task_id": "t19",
+      "workload_mi": 6100,
+      "arrival_time": 12,
+      "deadline": 8,
+      "cpu_demand_mips": 1200,
+      "memory_demand_mb": 2048,
+      "io_size_mb": 36
     }
   ],
   "metadata": {

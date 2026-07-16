@@ -1,7 +1,7 @@
 ﻿import unittest
 
 from desim.framework.models import PowerProfile, ResourceCapacity, Task, VirtualMachine
-from desim.algorithms.scheduling import RandomScheduler, Scheduler, SchedulingResult
+from desim.algorithms.scheduling import GeneticAlgorithmScheduler, RandomScheduler, Scheduler, SchedulingResult
 
 
 class _DummyScheduler(Scheduler):
@@ -85,6 +85,73 @@ class TestRandomScheduler(unittest.TestCase):
         scheduler = RandomScheduler()
         result = scheduler.schedule([], [make_vm("vm1")])
         self.assertEqual(result.task_to_vm, {})
+
+    def test_rejects_when_task_has_no_feasible_vm(self) -> None:
+        scheduler = RandomScheduler(seed=1)
+        infeasible_task = Task(
+            task_id="t_bad",
+            workload_mi=1000,
+            arrival_time=0,
+            deadline=10,
+            cpu_demand_mips=1200,
+            memory_demand_mb=3000,
+            io_size_mb=10,
+        )
+        vms = [make_vm("vm1"), make_vm("vm2")]
+
+        with self.assertRaises(ValueError):
+            scheduler.schedule([infeasible_task], vms)
+
+
+class TestGeneticAlgorithmScheduler(unittest.TestCase):
+    def test_returns_complete_feasible_mapping(self) -> None:
+        scheduler = GeneticAlgorithmScheduler(
+            population_size=20,
+            generations=25,
+            seed=13,
+        )
+        tasks = [
+            make_task("t1"),
+            make_task("t2"),
+            make_task("t3"),
+        ]
+        vms = [
+            make_vm("vm1"),
+            make_vm("vm2"),
+        ]
+
+        result = scheduler.schedule(tasks, vms)
+
+        self.assertEqual(set(result.task_to_vm.keys()), {"t1", "t2", "t3"})
+        self.assertTrue(all(vm in {"vm1", "vm2"} for vm in result.task_to_vm.values()))
+
+    def test_seed_makes_result_repeatable(self) -> None:
+        tasks = [make_task("t1"), make_task("t2"), make_task("t3"), make_task("t4")]
+        vms = [make_vm("vm1"), make_vm("vm2")]
+
+        s1 = GeneticAlgorithmScheduler(population_size=24, generations=30, seed=99)
+        s2 = GeneticAlgorithmScheduler(population_size=24, generations=30, seed=99)
+
+        r1 = s1.schedule(tasks, vms)
+        r2 = s2.schedule(tasks, vms)
+
+        self.assertEqual(r1.task_to_vm, r2.task_to_vm)
+
+    def test_rejects_when_task_has_no_feasible_vm(self) -> None:
+        scheduler = GeneticAlgorithmScheduler(seed=5)
+        infeasible_task = Task(
+            task_id="t_bad",
+            workload_mi=1000,
+            arrival_time=0,
+            deadline=10,
+            cpu_demand_mips=100,
+            memory_demand_mb=5000,
+            io_size_mb=10,
+        )
+        vms = [make_vm("vm1"), make_vm("vm2")]
+
+        with self.assertRaises(ValueError):
+            scheduler.schedule([infeasible_task], vms)
 
 
 if __name__ == "__main__":

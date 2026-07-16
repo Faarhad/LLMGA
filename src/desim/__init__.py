@@ -42,7 +42,7 @@ from .framework.vm_execution import (
     VirtualMachineExecutionManager,
     VirtualMachineExecutionState,
 )
-from .algorithms.scheduling import RandomScheduler, Scheduler, SchedulingResult
+from .algorithms.scheduling import GeneticAlgorithmScheduler, RandomScheduler, Scheduler, SchedulingResult
 from .research.energy import (
     CoefficientProvider,
     CornerPointCalibrationProvider,
@@ -94,6 +94,7 @@ __all__ = [
     "VirtualMachineExecutionManager",
     "Scheduler",
     "RandomScheduler",
+    "GeneticAlgorithmScheduler",
     "SchedulingResult",
     "SimulationOrchestrator",
     "OrchestratorRuntime",
