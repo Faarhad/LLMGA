@@ -1,0 +1,50 @@
+simulation:
+  until: 20
+  max_events: 10000
+
+scheduler:
+  name: random
+  options:
+    seed: 42
+
+energy:
+  alpha_share: 1.0
+  coefficients:
+    vm1:
+      alpha: 20.0
+      beta: 20.0
+    vm2:
+      alpha: 25.0
+      beta: 25.0
+    vm3:
+      alpha: 20.0
+      beta: 20.0
+
+metrics:
+  sla_lambda: 1.0
+  sla_theta: 1.0
+  sla_eta_max: 2.0
+  fairness_omega_1: 0.5
+  fairness_omega_2: 0.5
+  fairness_mu: 1.0
+  fitness_w_energy: 0.5
+  fitness_w_sla: 0.5
+  fitness_xi: 1.0
+  fitness_energy_norm_max: 1.0
+  fitness_sla_norm_max: 1.0
+
+dataset:
+  source: examples/sample_dataset.json
+  format: json
+
+random_seeds:
+  global_seed: 123
+  scheduler_seed: 456
+
+plugins:
+  - name: future_ga_plugin
+    enabled: false
+    entrypoint: mypkg.ga:Plugin
+    options:
+      mutation_rate: 0.1
+      crossover_rate: 0.8

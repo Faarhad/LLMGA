@@ -1,0 +1,443 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Packages ----------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=22mm]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{framed}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+
+% ---------- Convenience macros ----------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\providecommand{\operatorname}[1]{\mathrm{#1}}
+
+% Slightly looser line spacing for readability
+\renewcommand{\baselinestretch}{1.15}
+
+% Avoid ugly overfull boxes
+\setlength{\emergencystretch}{3em}
+
+% Make boxed equations a bit prettier
+\setlength{\fboxsep}{6pt}
+
+\title{\bfseries Section 1: System Model and Assumptions\\[4pt]
+\large LLM-Guided Genetic Algorithm for Energy-Efficient and Fair SLA-Aware Task Scheduling in Cloud Computing}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5cm}
+
+% =====================================================
+\section*{Section 1: System Model and Assumptions}
+
+\subsection*{1.1 Computing Environment and Resource Model}
+
+We consider a virtualized cloud computing environment operated by a single Infrastructure-as-a-Service (IaaS) provider. The environment comprises a set $\mathcal{P} = \{P_1, P_2, \ldots, P_S\}$ of $S$ heterogeneous physical machines (PMs). Each PM $P_s \in \mathcal{P}$ is characterized by its total CPU capacity $\Pi^{\text{cpu}}_s$ (expressed in MIPS), memory capacity $\Pi^{\text{mem}}_s$ (in MB), network bandwidth $\Pi^{\text{bw}}_s$ (in Mbps), and a \textbf{fixed base power draw} $P^{\text{base}}_s$ (in watts) that the PM consumes whenever it is powered on, independently of its instantaneous workload. The base draw is PM-specific and heterogeneous (for instance one PM may have $P^{\text{base}}_s = 100\,\text{W}$ while another has $P^{\text{base}}_s = 80\,\text{W}$); it enters the energy model of §1.2 as a constant per-PM contribution over the epoch horizon.
+
+\textbf{VM placement is a dataset input, not a decision variable.} The number of VMs hosted on each PM (i.e.\ the VM-to-PM placement) is provided by the deployment dataset and is treated as fixed within each scheduling epoch. Consequently, the binary host indicator $h_{js}$ defined below is an \emph{input} to the scheduler, and the optimization variables of this paper concern only the assignment of tasks to the already-placed VMs (§1.3). The PM capacity constraints are still stated explicitly because they must remain satisfied by the (fixed) placement assumed by the dataset.
+
+A set of heterogeneous virtual machines (VMs) $\mathcal{V} = \{V_1, V_2, \ldots, V_M\}$ of cardinality $M$ is instantiated on top of the PMs. The VM catalog is partitioned into a finite set of types $\mathcal{T}_V = \{\text{Small}, \text{Medium}, \text{Large}\}$. Each VM $V_j \in \mathcal{V}$ is fully specified by the tuple
+
+$$
+V_j = \big\langle \tau_j \in \mathcal{T}_V,\; C^{\text{cpu}}_j,\; \nu^{\text{vcpu}}_j,\; C^{\text{mem}}_j,\; W^{\text{bw}}_j,\; P^{\text{idle}}_j,\; P^{\text{max}}_j,\; s(j) \big\rangle,
+$$
+
+where:
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item $\tau_j$ denotes the VM type,
+  \item $C^{\text{cpu}}_j$ is the processing capacity in MIPS,
+  \item $\nu^{\text{vcpu}}_j$ is the number of virtual CPUs,
+  \item $C^{\text{mem}}_j$ is the memory in MB,
+  \item $W^{\text{bw}}_j$ is the allocated network bandwidth in Mbps,
+  \item $P^{\text{idle}}_j$ and $P^{\text{max}}_j$ are the power consumption values (in watts) when $V_j$ is idle and at peak utilization, respectively,
+  \item $s(j) \in \{1,\ldots,S\}$ is the index of the host PM.
+\end{itemize}
+
+A binary host indicator captures the placement of VMs on PMs:
+
+$$
+h_{js} =
+\begin{cases}
+1, & \text{if VM } V_j \text{ is hosted on PM } P_s, \\
+0, & \text{otherwise.}
+\end{cases}
+$$
+
+The capacity constraints of each PM are enforced by
+
+$$
+\sum_{j=1}^{M} h_{js} \cdot C^{\text{cpu}}_j \leq \Pi^{\text{cpu}}_s, \quad
+\sum_{j=1}^{M} h_{js} \cdot C^{\text{mem}}_j \leq \Pi^{\text{mem}}_s, \quad \forall s \in \{1,\ldots,S\}.
+$$
+
+The provider executes a sequence of independent scheduling epochs. At the beginning of each epoch, a batch of user-submitted tasks arrives and must be deterministically assigned to exactly one of the active VMs.
+
+% =====================================================
+\subsection*{1.2 Energy Model}
+
+We adopt a utilization-based power model that is standard in the cloud computing literature and has been empirically validated for modern virtualized platforms. The instantaneous power consumption of VM $V_j$ at time $t$ is decomposed into a static (idle) component and a dynamic (utilization-driven) component. The dynamic component is modeled as a quadratic polynomial in the time-varying CPU utilization $u_j(t) \in [0,1]$ so as to capture the non-linear thermal and leakage effects that arise at high load:
+
+$$
+\mathcal{P}_j(t) \;=\; \underbrace{P^{\text{idle}}_j}_{\text{static}} \;+\; \underbrace{\alpha_j \cdot u_j(t) + \beta_j \cdot u_j^2(t)}_{\text{dynamic}},
+$$
+
+where $\alpha_j, \beta_j \geq 0$ are VM-specific coefficients. The two coefficients are derived from the calibrated corner points of the power curve: when $u_j(t) = 0$ we have $\mathcal{P}_j(t) = P^{\text{idle}}_j$, and when $u_j(t) = 1$ we enforce $\mathcal{P}_j(t) = P^{\text{max}}_j$, yielding the calibration constraints
+
+$$
+\alpha_j + \beta_j \;=\; P^{\text{max}}_j - P^{\text{idle}}_j, \qquad \alpha_j, \beta_j \;\geq\; 0.
+$$
+
+The instantaneous CPU utilization $u_j(t)$ induced by the task set $\mathcal{A}_j(t)$ executing on $V_j$ at time $t$ is defined as the ratio of demanded compute to provisioned compute:
+
+$$
+u_j(t) \;=\; \frac{1}{C^{\text{cpu}}_j} \sum_{T_i \in \mathcal{A}_j(t)} w_i(t),
+$$
+
+where $w_i(t)$ denotes the instantaneous compute demand (in MIPS) of task $T_i$ at time $t$.
+
+Consider a task $T_i$ assigned to $V_j$ with workload $L_i$ (in MI). Its execution time on $V_j$ is $\Delta_{ij} = L_i / C^{\text{cpu}}_j$. Assuming the task occupies a constant fraction $\rho_{ij} \in (0, 1]$ of $V_j$'s capacity during execution (where $\rho_{ij} = w_i(t)/C^{\text{cpu}}_j$), the energy consumed by $V_j$ in order to execute $T_i$ is
+
+$$
+E_{ij} \;=\; \int_{0}^{\Delta_{ij}} \! \mathcal{P}_j(t)\, dt
+\;=\; P^{\text{idle}}_j \cdot \Delta_{ij} \;+\; \alpha_j \cdot \rho_{ij} \cdot \Delta_{ij} \;+\; \beta_j \cdot \rho_{ij}^2 \cdot \Delta_{ij}.
+$$
+
+Summing over all tasks assigned to $V_j$ during the scheduling epoch and adding the idle-time energy for intervals in which $V_j$ has no assignment, the total energy of $V_j$ over the epoch length $H$ is
+
+$$
+E_j \;=\; \sum_{T_i \in \mathcal{A}_j} E_{ij} \;+\; P^{\text{idle}}_j \cdot \Big( H - \sum_{T_i \in \mathcal{A}_j} \Delta_{ij} \Big).
+$$
+
+The total energy consumption of the data center during the epoch is decomposed into a \textbf{fixed (base) component} that each powered-on PM consumes independently of its workload, and a \textbf{dynamic component} driven entirely by VM activity (active processing plus idle-within-epoch intervals). The fixed energy of PM $P_s$ over the epoch horizon $H$ is
+
+$$
+E^{\text{base}}_s \;=\; P^{\text{base}}_s \cdot H,
+$$
+
+and the dynamic component is the aggregation of the per-VM energies $E_j$ derived above. Letting $\mathcal{V}_s = \{ V_j \mid s(j) = s \}$ denote the set of VMs hosted on $P_s$, the total data-center energy over the epoch is
+
+$$
+\boxed{\; E_{\text{total}} \;=\; \underbrace{\sum_{s=1}^{S} P^{\text{base}}_s \cdot H}_{\text{fixed / base}} \;+\; \underbrace{\sum_{j=1}^{M} E_j}_{\text{dynamic (VM activity)}} \;}
+$$
+
+where each $E_j$ itself splits, as in the previous equation, into an \emph{active-time} contribution $\sum_{T_i \in \mathcal{A}_j} E_{ij}$ accumulated while $V_j$ is processing tasks, and an \emph{idle-time} contribution $P^{\text{idle}}_j \cdot \big(H - \sum_{T_i \in \mathcal{A}_j} \Delta_{ij}\big)$ for the residual part of the epoch in which $V_j$ has no assignment. The two VM states --- active and idle within the epoch --- are thus the sole drivers of the dynamic term, while the base term is governed purely by the (fixed) PM population.
+
+% =====================================================
+\subsection*{1.3 Task Model}
+
+Let $\mathcal{T} = \{T_1, T_2, \ldots, T_N\}$ denote the batch of $N$ independent, indivisible, delay-tolerant tasks that arrive within the current scheduling epoch. Tasks are atomic scheduling units: preemption and migration are prohibited once execution has commenced. Formally, each task $T_i \in \mathcal{T}$ is described by the tuple
+
+$$
+T_i \;=\; \big\langle L_i,\; a_i,\; d_i,\; c^{\text{cpu}}_i,\; c^{\text{mem}}_i,\; b_i \big\rangle,
+$$
+
+where:
+
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item $L_i$ is the workload in Millions of Instructions (MI),
+  \item $a_i$ is the arrival (release) time,
+  \item $d_i$ is the soft deadline negotiated under the user Service Level Agreement (SLA),
+  \item $c^{\text{cpu}}_i$ is the CPU demand (in MIPS) required throughout execution,
+  \item $c^{\text{mem}}_i$ is the memory footprint (in MB),
+  \item $b_i$ is the input/output file size (in MB), used for estimating transfer overhead.
+\end{itemize}
+
+A binary decision variable encodes the assignment:
+
+$$
+x_{ij} =
+\begin{cases}
+1, & \text{if task } T_i \text{ is assigned to VM } V_j, \\
+0, & \text{otherwise.}
+\end{cases}
+$$
+
+Each task must be assigned to exactly one VM:
+
+$$
+\sum_{j=1}^{M} x_{ij} \;=\; 1, \quad \forall i \in \{1,\ldots,N\}.
+$$
+
+The execution start time of $T_i$ on $V_j$ is denoted $s_{ij}$ and satisfies the non-precedence constraint $s_{ij} \geq a_i$. The execution completion time is
+
+$$
+f_{ij} \;=\; s_{ij} \;+\; \Delta_{ij}, \qquad \Delta_{ij} \;=\; \frac{L_i}{C^{\text{cpu}}_j}.
+$$
+
+\textbf{VM availability and cross-epoch carry-over.} When the scheduler makes decisions for the new epoch, a VM may still be executing tasks inherited from the previous round. We denote by $r_j \geq 0$ the \emph{availability time} of $V_j$, i.e.\ the earliest instant within the current epoch at which $V_j$ becomes free for new assignments (equivalently, the finish time of the last task the VM was still running when the previous epoch closed). For example, in an epoch of length $H = 20\,\text{s}$, a VM that is busy until $r_j = 12\,\text{s}$ can only accept new work from $t = 12\,\text{s}$ onward. Tasks arriving in the current epoch therefore cannot start on $V_j$ before $r_j$.
+
+\textbf{Waiting (queueing) time.} Because each VM processes its assigned tasks sequentially, any task dispatched to a VM that is still busy --- or queued behind earlier-assigned tasks on the same VM --- must wait until the VM becomes free and the queue drains. We define the \emph{waiting time} $W_{ij} \geq 0$ of $T_i$ on $V_j$ as the residual delay between the earliest admissible start of $T_i$ and the actual start imposed by the VM's availability and queue state. Incorporating both the release time $a_i$, the VM availability $r_j$, and the sequential queueing discipline, the effective start time is
+
+$$
+s_{ij} \;=\; \max\!\big(a_i,\; r_j + q_{ij}\big),
+$$
+
+where $q_{ij} \geq 0$ is the cumulative processing time of all tasks assigned to $V_j$ and scheduled ahead of $T_i$ in the epoch (so that the per-task waiting time reads $W_{ij} = s_{ij} - a_i$ when the VM-side term dominates). The completion time is correspondingly $f_{ij} = s_{ij} + \Delta_{ij}$. The waiting time $W_{ij}$ is a first-class component of the system latency and feeds directly into the response-time and SLA calculations below.
+
+Because each VM processes its assigned tasks sequentially, we additionally enforce the non-overlap constraint: for any two tasks $T_i, T_{i'}$ assigned to the same $V_j$,
+
+$$
+x_{ij} \cdot x_{i'j} \cdot \big[ (s_{ij} - f_{i'j})(s_{i'j} - f_{ij}) \big] \;\geq\; 0.
+$$
+
+The response time of task $T_i$ is $R_i = f_{ij^{*}} - a_i$, where $j^{*} = \arg\max_j x_{ij}$; this quantity therefore aggregates, through $f_{ij^{*}}$, both the pure processing time $\Delta_{ij^{*}}$ and any waiting time $W_{ij^{*}}$ incurred while the chosen VM $V_{j^{*}}$ drains its inherited queue or completes its carry-over work from the previous epoch. The deadline overshoot is
+
+$$
+\delta_i \;=\; \max\big(0,\; f_{ij^{*}} - d_i\big).
+$$
+
+Memory feasibility is enforced by $\sum_{i} x_{ij} \cdot c^{\text{mem}}_i \leq C^{\text{mem}}_j$ for all $j$ at any instant, and bandwidth feasibility by $\sum_{i} x_{ij} \cdot b_i / \Delta_{ij} \leq W^{\text{bw}}_j$.
+
+% =====================================================
+\subsection*{1.4 Exponential SLA Penalty Model}
+
+A linear penalty $\delta_i$ understates the user-perceived harm of large violations: a 1-second miss and a 30-second miss are perceived qualitatively differently by users, yet a linear model treats the latter as merely thirty times worse rather than as a fundamentally different category of contractual breach. Conversely, a hard step penalty (zero within deadline, constant beyond) provides no gradient information to a gradient-free scheduler. We therefore propose a continuous, piecewise-defined exponential penalty that (i) vanishes when the deadline is met, (ii) is continuously differentiable at the boundary to facilitate local search operators in the GA, and (iii) escalates sharply with the relative overshoot $\delta_i / d_i$.
+
+Let $\delta_i$ denote the absolute overshoot and let $\eta_i = \delta_i / d_i \in [0, \infty)$ denote the normalized (relative) overshoot. We define the \textbf{exponential SLA penalty} of task $T_i$ as
+
+$$
+\boxed{\;\phi_i \;=\; \begin{cases}
+0, & \delta_i = 0 \quad (\text{SLA satisfied}),\\[4pt]
+\lambda \cdot \Big( e^{\theta \, \eta_i} - 1 \Big), & 0 < \eta_i \leq \eta^{\max}, \\[4pt]
+\lambda \cdot \Big( e^{\theta \, \eta^{\max}} - 1 \Big) + \kappa \cdot (\eta_i - \eta^{\max}), & \eta_i > \eta^{\max},
+\end{cases}\;}
+$$
+
+where:
+
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item $\lambda > 0$ is the \textbf{base penalty scale}, controlling the magnitude of penalty incurred by any overshoot at all,
+  \item $\theta > 0$ is the \textbf{exponential growth rate}, controlling how rapidly the penalty escalates with the relative overshoot,
+  \item $\eta^{\max} > 0$ is a \textbf{saturation threshold} beyond which the model switches to a linear tail in order to prevent numerical blow-up and preserve objective boundedness for the GA,
+  \item $\kappa = \lambda \, \theta \, e^{\theta \, \eta^{\max}}$ is the linear tail slope chosen so that the penalty is $C^1$-continuous at the junction $\eta_i = \eta^{\max}$.
+\end{itemize}
+
+\textbf{Desirable properties.} (i) $\phi_i = 0$ iff $\delta_i = 0$. (ii) $\partial \phi_i / \partial \delta_i \geq 0$ everywhere, and strictly positive whenever $\delta_i > 0$. (iii) The marginal penalty per unit overshoot is increasing in the regime $[0, \eta^{\max}]$, capturing the ``tolerable-but-escalating'' intuition of an SLA breach. (iv) The penalty is bounded above, which guarantees that the objective landscape of the GA is not dominated by a single catastrophic outlier. A representative numerical configuration used in our experiments is $\lambda = 1$, $\theta = 1$, $\eta^{\max} = 2.0$.
+
+The \textbf{aggregate exponential SLA cost} of a schedule $\mathbf{x}$ is the sum of per-task penalties:
+
+$$
+\Phi(\mathbf{x}) \;=\; \sum_{i=1}^{N} \phi_i(\mathbf{x}).
+$$
+
+% =====================================================
+\subsection*{1.5 Fairness-Aware SLA Model}
+
+A schedule that minimizes $\Phi(\mathbf{x})$ in isolation is liable to the well-known pathology of \textbf{deadline sacrifice}: a small subset of tasks is permitted to incur very large individual overshoots so that the majority can meet their deadlines, yielding an aggregate penalty that is mathematically low but operationally unacceptable. To prohibit such behavior, we impose an additional fairness criterion on the \emph{distribution} of penalties across tasks.
+
+Let $\boldsymbol{\phi} = (\phi_1, \phi_2, \ldots, \phi_N)$ denote the vector of per-task exponential SLA penalties produced by a candidate schedule. We define two complementary fairness functionals.
+
+\textbf{Jain-based fairness (bounded in $[0,1]$, higher is fairer).} Adapting Jain's fairness index to the penalty vector:
+
+$$
+\mathcal{J}(\boldsymbol{\phi}) \;=\; \frac{\Big( \sum_{i=1}^{N} \phi_i \Big)^2}{N \cdot \sum_{i=1}^{N} \phi_i^2}.
+$$
+
+When all tasks suffer equal penalty, $\mathcal{J} \to 1$; when a single task bears all the overshoot, $\mathcal{J} \to 1/N$. We use the unfairness complement $1 - \mathcal{J}(\boldsymbol{\phi})$ as a penalization term.
+
+\textbf{Exponential variance (differentiable, sharper on outliers).} Because the Jain index compresses the upper range and can mask moderate unfairness, we additionally propose a variance-based functional that amplifies dispersion:
+
+$$
+\mathcal{V}(\boldsymbol{\phi}) \;=\; \frac{1}{N} \sum_{i=1}^{N} \exp\!\Big( \mu \cdot (\phi_i - \bar{\phi})^{+} \Big) - 1,
+$$
+
+where $\bar{\phi} = (1/N) \sum_i \phi_i$ is the mean penalty, $(z)^{+} = \max(0,z)$ isolates over-mean outliers, and $\mu \geq 0$ is a sharpness parameter. This functional grows exponentially only for tasks whose penalty exceeds the mean, leaving below-mean tasks (and on-time tasks with $\phi_i = 0$) effectively unpenalized — thereby directly encoding the redistribution-of-harm requirement.
+
+We define the \textbf{total SLA unfairness} as the convex combination
+
+$$
+\mathcal{F}_{\text{SLA}}(\mathbf{x}) \;=\; \omega_1 \cdot \big(1 - \mathcal{J}(\boldsymbol{\phi})\big) \;+\; \omega_2 \cdot \mathcal{V}(\boldsymbol{\phi}),
+$$
+
+with $\omega_1 + \omega_2 = 1$ and $\omega_1, \omega_2 \geq 0$. Minimizing $\mathcal{F}_{\text{SLA}}$ encourages the GA to \textbf{redistribute} aggregate overshoot evenly across the delayed tasks (i.e., $\phi_i \approx \bar{\phi}$ for all $i$ with $\delta_i > 0$), rather than concentrating it on a sacrificial few.
+
+% =====================================================
+\subsection*{1.6 Optimization Objectives}
+
+Combining the energy model of §1.2 and the fairness-aware SLA model of §1.5, we formulate the task scheduling problem as a bi-objective Mixed-Integer Non-Linear Program (MINLP):
+
+$$
+\boxed{\;\min_{\mathbf{x},\,\mathbf{s}} \;\; \Big( \; F_1(\mathbf{x}, \mathbf{s}) \;=\; E_{\text{total}}(\mathbf{x}), \;\;\; F_2(\mathbf{x}, \mathbf{s}) \;=\; \Phi(\mathbf{x}) + \xi \cdot \mathcal{F}_{\text{SLA}}(\mathbf{x}) \;\Big) \;}
+$$
+
+subject to:
+
+$$
+\begin{aligned}
+&\text{(C1) Assignment:} & \sum_{j=1}^{M} x_{ij} &= 1, & \forall i, \\
+&\text{(C2) CPU capacity:} & \sum_{i} x_{ij} \cdot c^{\text{cpu}}_i &\leq C^{\text{cpu}}_j, & \forall j, \\
+&\text{(C3) Memory capacity:} & \sum_{i} x_{ij} \cdot c^{\text{mem}}_i &\leq C^{\text{mem}}_j, & \forall j, \\
+&\text{(C4) Non-overlap:} & x_{ij}\cdot x_{i'j}\cdot (s_{ij} - f_{i'j})(s_{i'j} - f_{ij}) &\geq 0, & \forall i, i', j, \\
+&\text{(C5) Release time:} & s_{ij} &\geq a_i, & \forall i, j, \\
+&\text{(C6) Domains:} & x_{ij} &\in \{0,1\}, & s_{ij} \geq 0,
+\end{aligned}
+$$
+
+where $\xi > 0$ is a penalty coefficient that balances the magnitude of the exponential SLA cost against the fairness surrogate.
+
+The bi-objective structure is resolved into a single scalar objective via the weighted aggregation
+
+$$
+\min_{\mathbf{x}, \mathbf{s}} \;\; \mathcal{Z}(\mathbf{x}, \mathbf{s}) \;=\; w_E \cdot \tilde{E}_{\text{total}} \;+\; w_{\text{SLA}} \cdot \widetilde{\Phi + \xi \mathcal{F}_{\text{SLA}}},
+$$
+
+where $\tilde{\cdot}$ denotes min-max normalization computed against a \textbf{random-solution benchmark}. Specifically, before the GA is run on a given epoch, we generate $K = 100$ random feasible assignment vectors $\{\mathbf{x}^{(k)}\}_{k=1}^{K}$ by sampling task--VM allocations uniformly at random subject to the assignment constraints of §1.6. For each objective component we record the worst-case (maximum) value observed across this random sample --- the maximum total energy $E^{\max}_{\text{rand}}$, the maximum schedule duration $T^{\max}_{\text{rand}}$ (i.e.\ the latest completion time across VMs), and the maximum objective uncertainty $U^{\max}_{\text{rand}}$ (the largest fitness spread observed across repeated noisy evaluations of the same solution) --- and use these as the normalization benchmarks:
+
+$$
+\tilde{E}_{\text{total}} = \frac{E_{\text{total}}}{E^{\max}_{\text{rand}}}, \qquad
+\widetilde{\Phi + \xi \mathcal{F}_{\text{SLA}}} = \frac{\Phi + \xi \mathcal{F}_{\text{SLA}}}{(\Phi + \xi \mathcal{F}_{\text{SLA}})^{\max}_{\text{rand}}},
+$$
+
+with $w_E, w_{\text{SLA}} \in [0,1]$ and $w_E + w_{\text{SLA}} = 1$. The benchmark maxima $(E^{\max}_{\text{rand}}, T^{\max}_{\text{rand}}, U^{\max}_{\text{rand}})$ are recomputed per epoch, so that the normalization adapts to the workload characteristics of the incoming batch. In the LLM-Guided GA framework proposed in Section~2, the weight vector $\mathbf{w} = (w_E, w_{\text{SLA}})$ and the penalty hyperparameters $(\lambda, \theta, \eta^{\max}, \mu, \xi, \omega_1, \omega_2)$ are \textbf{not fixed a priori}; they are dynamically tuned by the LLM advisor at the end of each scheduling epoch based on the observed GA convergence behavior and the workload characteristics of the incoming batch.
+
+% =====================================================
+\subsection*{1.7 LLM-as-Consultant Intervention Hooks}
+
+The LLM is \textbf{not} invoked on every GA iteration. Treating the LLM as a per-iteration operator would be both computationally prohibitive and conceptually redundant, since the GA's own stochastic operators already explore the solution space effectively in benign regimes. Instead, the LLM acts as a \textbf{consultant} that is triggered at specific, semantically meaningful points of the evolutionary process and whenever the population enters a degenerate regime. We distinguish two categories of intervention.
+
+\textbf{Structural hooks (always active).} The LLM is invoked, exactly once per epoch, to assist in three phases of the GA:
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item \textbf{Initial population generation.} Rather than seeding the GA with purely random chromosomes, the LLM proposes a diversified initial population informed by the workload characteristics (task sizes, VM capacities, current VM availability times $r_j$) and by a description of the active energy and SLA models.
+  \item \textbf{Selection / chromosome choice.} The LLM may bias parent selection toward regions of the search space that, in its assessment, are more likely to contain high-quality trade-offs between energy and SLA fairness.
+  \item \textbf{Mutation guidance.} The LLM proposes mutation operators or mutation step sizes that are adapted to the current state of the population (e.g.\ favoring large disruptive mutations when the population has collapsed, and small refinement mutations when convergence is healthy).
+\end{itemize}
+
+\textbf{Reactive triggers (conditional).} Independently of the structural hooks, the LLM is also invoked reactively when the GA exhibits pathological behavior. Two heuristic triggers are used:
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item \textbf{Loss of diversity.} Let $\mathcal{D}(\mathcal{P}_g)$ denote a population diversity metric at generation $g$ (e.g.\ average pairwise Hamming distance over the chromosome alphabet, or genotypic entropy). If $\mathcal{D}(\mathcal{P}_g)$ falls below a threshold $\mathcal{D}^{\min}$, the population has effectively collapsed onto a single basin and further unaided evolution will only refine, not explore. The LLM is then asked to inject diversity, typically by regenerating part of the population or by proposing structurally different chromosomes.
+  \item \textbf{Fitness stagnation.} If the best-so-far fitness does not improve for $G_{\text{stag}}$ consecutive generations (in our experiments $G_{\text{stag}} \in [40, 50]$), the search is assumed to be trapped in a local optimum and the LLM is asked to suggest exploration-oriented perturbations to escape it.
+\end{itemize}
+
+The operational design of the LLM hooks (prompt templates, decoding parameters, fallback behavior when the LLM proposal is infeasible) is deferred to Section~2.
+
+% =====================================================
+\subsection*{1.8 Illustrative Concrete Example}
+
+To make the fairness and calculation logic tangible before the full implementation, we walk through a minimal concrete instance. Consider a data center with $S = 2$ physical machines and a batch of $N = 10$ tasks arriving in the current epoch of length $H = 20\,\text{s}$.
+
+\textbf{Physical machines.}
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item $P_1$: base power $P^{\text{base}}_1 = 100\,\text{W}$; hosts VMs $V_1, V_2$.
+  \item $P_2$: base power $P^{\text{base}}_2 = 80\,\text{W}$; hosts VMs $V_3, V_4$.
+\end{itemize}
+The fixed energy over the epoch is $E^{\text{base}}_1 + E^{\text{base}}_2 = (100 + 80) \cdot 20 = 3600\,\text{J}$, regardless of the schedule.
+
+\textbf{Virtual machines (illustrative parameters).}
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item $V_1$: $C^{\text{cpu}}_1 = 1000\,\text{MIPS}$, $P^{\text{idle}}_1 = 40\,\text{W}$, $P^{\text{max}}_1 = 100\,\text{W}$, availability $r_1 = 0\,\text{s}$ (idle at epoch start).
+  \item $V_2$: $C^{\text{cpu}}_2 = 1000\,\text{MIPS}$, $P^{\text{idle}}_2 = 40\,\text{W}$, $P^{\text{max}}_2 = 100\,\text{W}$, availability $r_2 = 12\,\text{s}$ (still running a task inherited from the previous epoch until $t = 12\,\text{s}$).
+  \item $V_3$: $C^{\text{cpu}}_3 = 2000\,\text{MIPS}$, $P^{\text{idle}}_3 = 60\,\text{W}$, $P^{\text{max}}_3 = 160\,\text{W}$, availability $r_3 = 0\,\text{s}$.
+  \item $V_4$: $C^{\text{cpu}}_4 = 2000\,\text{MIPS}$, $P^{\text{idle}}_4 = 60\,\text{W}$, $P^{\text{max}}_4 = 160\,\text{W}$, availability $r_4 = 5\,\text{s}$.
+\end{itemize}
+
+\textbf{Tasks.} Each $T_i$ has workload $L_i$ and deadline $d_i$ (arrival $a_i = 0$ for simplicity). Consider two candidate schedules for two delayed tasks $T_9, T_{10}$ that both miss their deadline $d = 18\,\text{s}$ by a combined $5\,\text{s}$:
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+  \item \textbf{Concentrated schedule:} $T_9$ finishes on time, $T_{10}$ finishes at $23\,\text{s}$ $\Rightarrow$ overshoot vector $\boldsymbol{\delta} = (0, 5)\,\text{s}$.
+  \item \textbf{Redistributed schedule:} both finish at $20.5\,\text{s}$ $\Rightarrow$ overshoot vector $\boldsymbol{\delta} = (2.5, 2.5)\,\text{s}$.
+\end{itemize}
+
+Under the exponential SLA penalty of §1.4 (with $\lambda = 1, \theta = 1$) and the fairness functionals of §1.5, the redistributed schedule yields a strictly lower aggregate penalty \emph{and} a higher Jain index $\mathcal{J}$, even though both schedules have the same total overshoot of $5\,\text{s}$. This is precisely the redistribution-of-harm behavior the model is designed to encourage, and the example confirms that --- in contrast to a pure sum-of-overshoots objective --- the fairness-aware formulation correctly ranks the redistributed schedule above the concentrated one.
+
+\textbf{Energy bookkeeping (one VM).} Suppose $V_2$ ($r_2 = 12\,\text{s}$) is assigned task $T_5$ with $L_5 = 8000\,\text{MI}$ at the start of the epoch. Its earliest start is $s_{5,2} = \max(0, 12 + 0) = 12\,\text{s}$, its processing time is $\Delta_{5,2} = 8000 / 1000 = 8\,\text{s}$, and its completion is $f_{5,2} = 20\,\text{s}$. The waiting time is $W_{5,2} = 12\,\text{s}$, entirely due to the carry-over from the previous epoch. The dynamic energy attributable to $V_2$ over the epoch is then $E_2 = E_{5,2} + P^{\text{idle}}_2 \cdot (H - \Delta_{5,2})$, i.e.\ the active-time energy for $T_5$ plus the idle-time energy for the remaining $12\,\text{s}$ during which $V_2$ was waiting/carrying over.
+
+\textbf{Normalization benchmark.} Before the GA runs, $K = 100$ random assignments are generated; the maximum observed total energy, maximum duration, and maximum fitness uncertainty across this sample define the normalization constants used in §1.6.
+
+% =====================================================
+\section*{Symbol Table}
+
+\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{p{4.5cm} p{9.5cm} p{2.5cm}}
+\toprule
+\textbf{Symbol} & \textbf{Definition} & \textbf{Unit} \\
+\midrule
+\endfirsthead
+
+\multicolumn{3}{l}{\small\emph{(continued from previous page)}} \\
+\toprule
+\textbf{Symbol} & \textbf{Definition} & \textbf{Unit} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{3}{r}{\small\emph{(continued on next page)}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+$\mathcal{P}, P_s$ & Set of physical machines (PMs); $s$-th PM & --- \\
+$S$ & Number of PMs & --- \\
+$\Pi^{\text{cpu}}_s, \Pi^{\text{mem}}_s, \Pi^{\text{bw}}_s$ & CPU / memory / bandwidth capacity of PM $P_s$ & MIPS / MB / Mbps \\
+$P^{\text{base}}_s$ & Fixed base power draw of powered-on PM $P_s$ & W \\
+$E^{\text{base}}_s$ & Fixed (base) energy of $P_s$ over the epoch, $P^{\text{base}}_s \cdot H$ & J \\
+$\mathcal{V}, V_j$ & Set of VMs; $j$-th VM & --- \\
+$M$ & Number of VMs & --- \\
+$\mathcal{T}_V$ & Set of VM types (Small, Medium, Large) & --- \\
+$\tau_j$ & Type of $V_j$ & --- \\
+$C^{\text{cpu}}_j$ & CPU capacity of $V_j$ & MIPS \\
+$\nu^{\text{vcpu}}_j$ & Number of vCPUs of $V_j$ & --- \\
+$C^{\text{mem}}_j$ & Memory capacity of $V_j$ & MB \\
+$W^{\text{bw}}_j$ & Network bandwidth of $V_j$ & Mbps \\
+$P^{\text{idle}}_j, P^{\text{max}}_j$ & Idle / maximum power of $V_j$ & W \\
+$\alpha_j, \beta_j$ & Dynamic-power coefficients of $V_j$ & W \\
+$s(j)$ & Index of the PM hosting $V_j$ & --- \\
+$h_{js}$ & Binary host indicator (1 if $V_j$ on $P_s$) & --- \\
+$u_j(t)$ & Instantaneous CPU utilization of $V_j$ at time $t$ & $\in [0,1]$ \\
+$\mathcal{P}_j(t)$ & Instantaneous power of $V_j$ at time $t$ & W \\
+$\mathcal{T}, T_i$ & Set of tasks; $i$-th task & --- \\
+$N$ & Number of tasks in the batch & --- \\
+$L_i$ & Workload of $T_i$ & MI \\
+$a_i, d_i$ & Arrival time / deadline of $T_i$ & s \\
+$c^{\text{cpu}}_i, c^{\text{mem}}_i$ & CPU / memory demand of $T_i$ & MIPS / MB \\
+$b_i$ & I/O file size of $T_i$ & MB \\
+$x_{ij}$ & Binary assignment (1 if $T_i \to V_j$) & --- \\
+$s_{ij}, f_{ij}$ & Start / finish time of $T_i$ on $V_j$ & s \\
+$\Delta_{ij}$ & Execution time of $T_i$ on $V_j$ & s \\
+$r_j$ & Availability time of $V_j$ within the epoch (carry-over) & s \\
+$q_{ij}$ & Cumulative processing queued ahead of $T_i$ on $V_j$ & s \\
+$W_{ij}$ & Waiting time of $T_i$ on $V_j$, $W_{ij} = s_{ij} - a_i$ & s \\
+$\rho_{ij}$ & Fraction of $V_j$'s capacity occupied by $T_i$ & $\in (0,1]$ \\
+$E_{ij}$ & Energy consumed by $V_j$ to execute $T_i$ & J \\
+$E_j$ & Total energy of $V_j$ over the epoch & J \\
+$E_{\text{total}}$ & Total data-center energy over the epoch & J \\
+$H$ & Epoch horizon & s \\
+$R_i$ & Response time of $T_i$ & s \\
+$\delta_i$ & Deadline overshoot of $T_i$ & s \\
+$\eta_i$ & Normalized (relative) overshoot $\delta_i / d_i$ & --- \\
+$\phi_i$ & Exponential SLA penalty of $T_i$ & --- \\
+$\lambda$ & Base penalty scale & --- \\
+$\theta$ & Exponential growth rate & --- \\
+$\eta^{\max}$ & Saturation threshold for $\eta_i$ & --- \\
+$\kappa$ & Linear-tail slope (continuity-preserving) & --- \\
+$\Phi(\mathbf{x})$ & Aggregate exponential SLA cost & --- \\
+$\boldsymbol{\phi}$ & Vector of per-task penalties & --- \\
+$\bar{\phi}$ & Mean of $\boldsymbol{\phi}$ & --- \\
+$\mathcal{J}(\boldsymbol{\phi})$ & Jain fairness index on $\boldsymbol{\phi}$ & $\in [0,1]$ \\
+$\mathcal{V}(\boldsymbol{\phi})$ & Exponential-variance dispersion surrogate & --- \\
+$\mu$ & Sharpness parameter for $\mathcal{V}$ & --- \\
+$\omega_1, \omega_2$ & Mixing weights for $\mathcal{F}_{\text{SLA}}$ & $\in [0,1]$ \\
+$\mathcal{F}_{\text{SLA}}(\mathbf{x})$ & Total SLA unfairness & --- \\
+$\xi$ & Fairness-vs-cost coupling coefficient & --- \\
+$w_E, w_{\text{SLA}}$ & Scalar weights on energy / SLA objectives & $\in [0,1]$ \\
+$\mathcal{Z}$ & Final scalarized objective & --- \\
+$K$ & Number of random solutions in the normalization benchmark & --- \\
+$E^{\max}_{\text{rand}}$ & Max total energy observed across $K$ random solutions & J \\
+$T^{\max}_{\text{rand}}$ & Max schedule duration observed across $K$ random solutions & s \\
+$U^{\max}_{\text{rand}}$ & Max objective uncertainty observed across $K$ random solutions & --- \\
+$\mathcal{D}(\mathcal{P}_g), \mathcal{D}^{\min}$ & Population diversity metric at generation $g$ and its trigger threshold & --- \\
+$G_{\text{stag}}$ & Stagnation threshold triggering reactive LLM intervention & generations \\
+\end{longtable}
+
+\end{document}
