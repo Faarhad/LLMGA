@@ -118,6 +118,38 @@ class TestSimulationOrchestrator(unittest.TestCase):
                 assignment=SchedulingResult({"t1": "vm-x"}),
             )
 
+    def test_insert_events_rejects_memory_infeasible_assignment(self) -> None:
+        orchestrator = SimulationOrchestrator(scheduler=FixedScheduler({}))
+        data = dataset_fixture()
+        data["tasks"][0]["memory_demand_mb"] = 4096
+        cfg = orchestrator.create_cloud_configuration(data)
+        sim = Simulation()
+
+        with self.assertRaises(ValueError):
+            orchestrator.insert_events(
+                simulation=sim,
+                configuration=cfg,
+                assignment=SchedulingResult({"t1": "vm1"}),
+            )
+
+    def test_insert_events_allows_sequential_tasks_when_each_fits_vm_memory(self) -> None:
+        orchestrator = SimulationOrchestrator(scheduler=FixedScheduler({}))
+        data = dataset_fixture()
+        data["tasks"][0]["memory_demand_mb"] = 1800
+        data["tasks"][1]["memory_demand_mb"] = 1800
+        data["datacenter"]["virtual_machines"][0]["memory_mb"] = 2048
+
+        cfg = orchestrator.create_cloud_configuration(data)
+        sim = Simulation()
+
+        orchestrator.insert_events(
+            simulation=sim,
+            configuration=cfg,
+            assignment=SchedulingResult({"t1": "vm1", "t2": "vm1"}),
+        )
+
+        self.assertEqual(len(sim.event_queue), 2)
+
     def test_run_executes_and_returns_state(self) -> None:
         mapping = {"t1": "vm1", "t2": "vm2"}
         orchestrator = SimulationOrchestrator(scheduler=FixedScheduler(mapping))

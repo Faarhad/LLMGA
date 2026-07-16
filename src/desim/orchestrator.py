@@ -146,6 +146,7 @@ class SimulationOrchestrator:
 
             task = tasks_by_id[task_id]
             vm = vms_by_id[vm_id]
+            self._validate_assignment_feasibility(task=task, vm=vm)
             duration = self._estimate_duration(task=task, vm=vm)
 
             simulation.schedule(
@@ -219,3 +220,12 @@ class SimulationOrchestrator:
         if vm.capacity.cpu_mips <= 0:
             raise ValueError(f"vm cpu_mips must be > 0 for duration estimate, vm_id={vm.vm_id}")
         return task.workload_mi / vm.capacity.cpu_mips
+
+    @staticmethod
+    def _validate_assignment_feasibility(task: Task, vm: VirtualMachine) -> None:
+        if task.memory_demand_mb > vm.capacity.memory_mb:
+            raise ValueError(
+                "infeasible assignment: "
+                f"task_id={task.task_id} requires memory_demand_mb={task.memory_demand_mb} "
+                f"but vm_id={vm.vm_id} provides memory_mb={vm.capacity.memory_mb}"
+            )
