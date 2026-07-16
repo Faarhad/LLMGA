@@ -1,7 +1,7 @@
-from typing import Dict
+﻿from typing import Dict
 
-from desim.orchestrator import SimulationOrchestrator
-from desim.scheduling import Scheduler, SchedulingResult
+from desim.framework.orchestrator import SimulationOrchestrator
+from desim.algorithms.scheduling import Scheduler, SchedulingResult
 
 class FixedScheduler(Scheduler):
     def __init__(self, mapping: Dict[str, str]):
@@ -105,3 +105,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

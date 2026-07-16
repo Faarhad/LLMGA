@@ -1,9 +1,9 @@
-import math
+﻿import math
 from typing import Dict, List
 
-from desim.models import CloudConfiguration, Datacenter, PhysicalMachine, PowerProfile, ResourceCapacity, Task, VirtualMachine
-from desim.orchestrator import SimulationOrchestrator
-from desim.scheduling import Scheduler, SchedulingResult
+from desim.framework.models import CloudConfiguration, Datacenter, PhysicalMachine, PowerProfile, ResourceCapacity, Task, VirtualMachine
+from desim.framework.orchestrator import SimulationOrchestrator
+from desim.algorithms.scheduling import Scheduler, SchedulingResult
 
 
 TOLERANCE = 1e-6
@@ -142,3 +142,4 @@ def jain_index(values: List[float]) -> float:
     if total == 0.0 and squares == 0.0:
         return 1.0
     return (total * total) / (len(values) * squares)
+

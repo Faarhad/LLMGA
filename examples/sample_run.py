@@ -1,7 +1,7 @@
-from desim.configuration import AppConfigLoader
-from desim.dataset_loading import DatasetLoader
-from desim.orchestrator import SimulationOrchestrator
-from desim.scheduling import RandomScheduler
+﻿from desim.framework.configuration import AppConfigLoader
+from desim.framework.dataset_loading import DatasetLoader
+from desim.framework.orchestrator import SimulationOrchestrator
+from desim.algorithms.scheduling import RandomScheduler
 
 
 def main() -> None:
@@ -28,3 +28,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
