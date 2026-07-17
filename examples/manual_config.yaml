@@ -5,7 +5,7 @@ simulation:
 scheduler:
   name: genetic_scheduler.py
   options:
-    seed: 42
+    seed: 65
     population_size: 40
     generations: 80
     crossover_rate: 0.9

@@ -46,7 +46,8 @@ def main() -> None:
     print("Waiting time:", metrics.average_waiting_time)
     print("Response time:", metrics.average_response_time)
     print("SLA penalty:", metrics.sla.aggregate_penalty)
-    print("Fairness:", metrics.fairness.combined_fairness)
+    print("Jain Fairness (higher better):", metrics.fairness.jain_index)
+    print("unfairness (lower better):", metrics.fairness.combined_fairness)
     print("Utilization:", metrics.cpu_occupancy)
     print("Fitness:", metrics.fitness)
 

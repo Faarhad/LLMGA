@@ -5,7 +5,7 @@ simulation:
 scheduler:
   name: random_scheduler.py
   options:
-    seed: 42
+    seed: 31
 
 energy:
   alpha_share: 1.0
