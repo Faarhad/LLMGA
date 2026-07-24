@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ..algorithms.scheduling import Scheduler, SchedulingResult
+from ..algorithms.scheduling import Scheduler, SchedulingResult, VmQueuedTaskView, VmRunningTaskView, VmStateView
 from ..research.metrics_collector import MetricsCollector, MetricsSnapshot
 from .dataset_loading import DatasetLoader
 from .event import Event
@@ -123,10 +123,10 @@ class SimulationOrchestrator:
             metadata=dict(dataset.get("metadata", {})),
         )
 
-    def invoke_scheduler(self, configuration: CloudConfiguration) -> SchedulingResult:
+    def invoke_scheduler(self, waiting_tasks: List[Task], vm_states: List[VmStateView]) -> SchedulingResult:
         return self.scheduler.schedule(
-            tasks=configuration.tasks,
-            virtual_machines=configuration.datacenter.virtual_machines,
+            waiting_tasks=waiting_tasks,
+            vm_states=vm_states,
         )
 
     def insert_events(
@@ -164,6 +164,7 @@ class SimulationOrchestrator:
     def run(self, dataset_source: Dict[str, Any] | str | Path) -> SimulationState:
         dataset = self.load_dataset(dataset_source)
         configuration = self.create_cloud_configuration(dataset)
+        slot_length = self._resolve_slot_length(dataset)
 
         simulation = Simulation()
         vm_execution = VirtualMachineExecutionManager.from_virtual_machines(
@@ -184,15 +185,44 @@ class SimulationOrchestrator:
         utilization.register(simulation)
         metrics_collector.register(simulation)
 
-        assignment = self.invoke_scheduler(configuration)
-        self.insert_events(
-            simulation=simulation,
-            configuration=configuration,
-            assignment=assignment,
+        simulation.dispatcher.register("task.arrival", self._on_task_arrival)
+        simulation.dispatcher.register(
+            "scheduler.tick",
+            lambda state, event: self._on_scheduler_tick(
+                simulation=simulation,
+                state=state,
+                event=event,
+            ),
         )
 
+        cumulative_assignment: Dict[str, str] = {}
+        simulation.state.set("waiting_tasks", [])
+        simulation.state.set("all_tasks_by_id", {task.task_id: task for task in configuration.tasks})
+        simulation.state.set("slot_length", slot_length)
+
+        for task in sorted(configuration.tasks, key=lambda t: (t.arrival_time, t.task_id)):
+            simulation.schedule(
+                Event(
+                    time=task.arrival_time,
+                    name="task.arrival",
+                    payload={"task": task},
+                )
+            )
+
+        tick_time = slot_length
+        while tick_time <= configuration.epoch_length:
+            simulation.schedule(
+                Event(
+                    time=tick_time,
+                    name="scheduler.tick",
+                    payload={},
+                )
+            )
+            tick_time += slot_length
+
         simulation.state.set("cloud_configuration", configuration)
-        simulation.state.set("assignment", assignment)
+        simulation.state.set("assignment", SchedulingResult(task_to_vm={}))
+        simulation.state.set("assignment_map", cumulative_assignment)
         simulation.state.set("vm_execution", vm_execution)
         simulation.state.set("timing_metrics", timing_metrics)
         simulation.state.set("utilization_tracker", utilization)
@@ -210,10 +240,102 @@ class SimulationOrchestrator:
             timing_metrics=timing_metrics,
             utilization=utilization,
             metrics=metrics,
-            assignment=assignment,
+            assignment=SchedulingResult(task_to_vm=dict(cumulative_assignment)),
         )
+        simulation.state.set("assignment", runtime.assignment)
         simulation.state.set("orchestrator_runtime", runtime)
         return simulation.state
+
+    def _on_task_arrival(self, state: SimulationState, event: Event) -> None:
+        waiting_tasks = list(state.get("waiting_tasks", []))
+        waiting_tasks.append(event.payload["task"])
+        state.set("waiting_tasks", waiting_tasks)
+
+    def _on_scheduler_tick(self, simulation: Simulation, state: SimulationState, event: Event) -> None:
+        waiting_tasks: List[Task] = list(state.get("waiting_tasks", []))
+        if not waiting_tasks:
+            return
+
+        vm_execution: VirtualMachineExecutionManager = state.get("vm_execution")
+        vm_states = self._build_vm_state_view(vm_execution=vm_execution, now=event.time)
+        assignment = self.invoke_scheduler(waiting_tasks=waiting_tasks, vm_states=vm_states)
+        assignment_map: Dict[str, str] = state.get("assignment_map", {})
+
+        waiting_by_id = {task.task_id: task for task in waiting_tasks}
+        vms_by_id = {vm_state.vm.vm_id: vm_state.vm for vm_state in vm_states}
+        assigned_ids: set[str] = set()
+
+        for task_id, vm_id in assignment.task_to_vm.items():
+            if task_id not in waiting_by_id:
+                raise ValueError(f"scheduler assigned unknown or non-waiting task_id: {task_id}")
+            if task_id in assignment_map:
+                raise ValueError(f"task_id already assigned previously: {task_id}")
+            if vm_id not in vms_by_id:
+                raise ValueError(f"scheduler assigned unknown vm_id: {vm_id}")
+
+            task = waiting_by_id[task_id]
+            vm = vms_by_id[vm_id]
+            self._validate_assignment_feasibility(task=task, vm=vm)
+            duration = self._estimate_duration(task=task, vm=vm)
+
+            simulation.schedule(
+                Event(
+                    time=event.time,
+                    name="vm.enqueue",
+                    payload={
+                        "vm_id": vm.vm_id,
+                        "task": task,
+                        "duration": duration,
+                    },
+                )
+            )
+            assignment_map[task_id] = vm_id
+            assigned_ids.add(task_id)
+
+        state.set("assignment_map", assignment_map)
+        state.set("assignment", SchedulingResult(task_to_vm=dict(assignment_map)))
+        state.set("waiting_tasks", [task for task in waiting_tasks if task.task_id not in assigned_ids])
+
+    @staticmethod
+    def _build_vm_state_view(vm_execution: VirtualMachineExecutionManager, now: float) -> List[VmStateView]:
+        vm_states: List[VmStateView] = []
+        for vm_id in sorted(vm_execution.vm_states):
+            vm_state = vm_execution.vm_states[vm_id]
+            queue_view = [
+                VmQueuedTaskView(
+                    task=queued.task,
+                    remaining_duration=queued.duration,
+                )
+                for queued in vm_state.queue
+            ]
+            running_view = None
+            if vm_state.current_task is not None:
+                running_view = VmRunningTaskView(
+                    task=vm_state.current_task.task,
+                    remaining_duration=max(0.0, vm_state.current_task.finish_time - now),
+                )
+
+            vm_states.append(
+                VmStateView(
+                    vm=vm_state.vm,
+                    availability_time=vm_state.availability_time,
+                    queue=queue_view,
+                    running_task=running_view,
+                )
+            )
+        return vm_states
+
+    @staticmethod
+    def _resolve_slot_length(dataset: Dict[str, Any]) -> float:
+        metadata = dataset.get("metadata", {})
+        candidate = dataset.get("slot_length")
+        if candidate is None and isinstance(metadata, dict):
+            candidate = metadata.get("slot_length")
+
+        slot_length = float(candidate) if candidate is not None else 1.0
+        if slot_length <= 0:
+            raise ValueError("slot_length must be > 0")
+        return slot_length
 
     @staticmethod
     def _estimate_duration(task: Task, vm: VirtualMachine) -> float:

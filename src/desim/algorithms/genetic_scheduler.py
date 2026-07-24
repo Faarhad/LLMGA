@@ -2,7 +2,7 @@ import random
 from typing import Dict, List
 
 from ..framework.models import Task, VirtualMachine
-from .base import Scheduler, SchedulingResult
+from .base import Scheduler, SchedulingResult, VmStateView
 
 
 class GeneticAlgorithmScheduler(Scheduler):
@@ -45,22 +45,24 @@ class GeneticAlgorithmScheduler(Scheduler):
         self.sla_weight = sla_weight
         self._rng = random.Random(seed)
 
-    def schedule(self, tasks: List[Task], virtual_machines: List[VirtualMachine]) -> SchedulingResult:
-        if not virtual_machines and tasks:
+    def schedule(self, waiting_tasks: List[Task], vm_states: List[VmStateView]) -> SchedulingResult:
+        virtual_machines = [vm_state.vm for vm_state in vm_states]
+
+        if not virtual_machines and waiting_tasks:
             raise ValueError("cannot schedule tasks without virtual machines")
-        if not tasks:
+        if not waiting_tasks:
             return SchedulingResult(task_to_vm={})
 
-        feasible = self._build_feasible_vm_indices(tasks, virtual_machines)
+        feasible = self._build_feasible_vm_indices(waiting_tasks, virtual_machines)
         population = [self._random_chromosome(feasible) for _ in range(self.population_size)]
 
         for _ in range(self.generations):
-            ranked = sorted(population, key=lambda c: self._objective(c, tasks, virtual_machines))
+            ranked = sorted(population, key=lambda c: self._objective(c, waiting_tasks, virtual_machines))
             next_population = ranked[: self.elitism_count]
 
             while len(next_population) < self.population_size:
-                parent_a = self._tournament_select(population, tasks, virtual_machines)
-                parent_b = self._tournament_select(population, tasks, virtual_machines)
+                parent_a = self._tournament_select(population, waiting_tasks, virtual_machines)
+                parent_b = self._tournament_select(population, waiting_tasks, virtual_machines)
 
                 child_a, child_b = self._crossover(parent_a, parent_b)
                 self._mutate(child_a, feasible)
@@ -72,10 +74,10 @@ class GeneticAlgorithmScheduler(Scheduler):
 
             population = next_population
 
-        best = min(population, key=lambda c: self._objective(c, tasks, virtual_machines))
+        best = min(population, key=lambda c: self._objective(c, waiting_tasks, virtual_machines))
         mapping = {
             task.task_id: virtual_machines[best[i]].vm_id
-            for i, task in enumerate(tasks)
+            for i, task in enumerate(waiting_tasks)
         }
         return SchedulingResult(task_to_vm=mapping)
 

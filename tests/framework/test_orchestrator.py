@@ -12,8 +12,22 @@ class FixedScheduler(Scheduler):
     def __init__(self, mapping):
         self.mapping = dict(mapping)
 
-    def schedule(self, tasks, virtual_machines):
-        return SchedulingResult(task_to_vm=self.mapping)
+    def schedule(self, waiting_tasks, vm_states):
+        waiting_ids = {task.task_id for task in waiting_tasks}
+        filtered = {task_id: vm_id for task_id, vm_id in self.mapping.items() if task_id in waiting_ids}
+        return SchedulingResult(task_to_vm=filtered)
+
+
+class RecordingScheduler(Scheduler):
+    def __init__(self, mapping):
+        self.mapping = dict(mapping)
+        self.calls = []
+
+    def schedule(self, waiting_tasks, vm_states):
+        self.calls.append([task.task_id for task in waiting_tasks])
+        waiting_ids = {task.task_id for task in waiting_tasks}
+        filtered = {task_id: vm_id for task_id, vm_id in self.mapping.items() if task_id in waiting_ids}
+        return SchedulingResult(task_to_vm=filtered)
 
 
 def dataset_fixture() -> dict:
@@ -183,6 +197,57 @@ class TestSimulationOrchestrator(unittest.TestCase):
 
         # t1 duration is 1.0s, so at epoch 0.5 it should not have finished yet.
         self.assertEqual(len(history), 0)
+
+    def test_run_batches_arrivals_and_schedules_at_slot_boundaries(self) -> None:
+        data = dataset_fixture()
+        data["epoch_length"] = 4.0
+        data["slot_length"] = 1.0
+        data["tasks"] = [
+            {
+                "task_id": "t1",
+                "workload_mi": 1000,
+                "arrival_time": 0.2,
+                "deadline": 10,
+                "cpu_demand_mips": 100,
+                "memory_demand_mb": 128,
+                "io_size_mb": 10,
+            },
+            {
+                "task_id": "t2",
+                "workload_mi": 1000,
+                "arrival_time": 0.9,
+                "deadline": 10,
+                "cpu_demand_mips": 100,
+                "memory_demand_mb": 128,
+                "io_size_mb": 10,
+            },
+            {
+                "task_id": "t3",
+                "workload_mi": 1000,
+                "arrival_time": 1.1,
+                "deadline": 10,
+                "cpu_demand_mips": 100,
+                "memory_demand_mb": 128,
+                "io_size_mb": 10,
+            },
+        ]
+
+        scheduler = RecordingScheduler({"t1": "vm1", "t2": "vm2", "t3": "vm1"})
+        orchestrator = SimulationOrchestrator(scheduler=scheduler)
+
+        state = orchestrator.run(data)
+        runtime = state.get("orchestrator_runtime")
+        vm_exec = runtime.vm_execution
+
+        self.assertEqual(scheduler.calls, [["t1", "t2"], ["t3"]])
+        self.assertEqual(state.get("assignment").task_to_vm, {"t1": "vm1", "t2": "vm2", "t3": "vm1"})
+
+        vm1_history = vm_exec.get_vm_state("vm1").task_history
+        vm2_history = vm_exec.get_vm_state("vm2").task_history
+        self.assertEqual([r.task.task_id for r in vm1_history], ["t1", "t3"])
+        self.assertEqual([r.task.task_id for r in vm2_history], ["t2"])
+        self.assertAlmostEqual(vm1_history[0].start_time, 1.0)
+        self.assertAlmostEqual(vm1_history[1].start_time, 2.0)
 
 
 if __name__ == "__main__":

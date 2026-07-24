@@ -132,7 +132,8 @@ class DatasetParser:
     """Parses JSON and CSV datasets into a common dictionary structure."""
 
     def parse_json(self, file_path: Path) -> Dict[str, Any]:
-        with file_path.open("r", encoding="utf-8") as f:
+        # Accept JSON files saved with or without UTF-8 BOM.
+        with file_path.open("r", encoding="utf-8-sig") as f:
             return json.load(f)
 
     def parse_csv_bundle(self, folder: Path) -> Dict[str, Any]:

@@ -19,9 +19,35 @@ class SchedulingResult:
                 raise ValueError("vm ids in mapping must be non-empty")
 
 
+@dataclass(frozen=True)
+class VmQueuedTaskView:
+    """Read-only view of a queued VM task for scheduler decisions."""
+
+    task: Task
+    remaining_duration: float
+
+
+@dataclass(frozen=True)
+class VmRunningTaskView:
+    """Read-only view of the currently running VM task."""
+
+    task: Task
+    remaining_duration: float
+
+
+@dataclass(frozen=True)
+class VmStateView:
+    """Read-only VM execution snapshot exposed to schedulers."""
+
+    vm: VirtualMachine
+    availability_time: float
+    queue: List[VmQueuedTaskView] = field(default_factory=list)
+    running_task: VmRunningTaskView | None = None
+
+
 class Scheduler(ABC):
     """Abstract scheduler that returns task-to-VM mapping only."""
 
     @abstractmethod
-    def schedule(self, tasks: List[Task], virtual_machines: List[VirtualMachine]) -> SchedulingResult:
+    def schedule(self, waiting_tasks: List[Task], vm_states: List[VmStateView]) -> SchedulingResult:
         raise NotImplementedError

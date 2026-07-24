@@ -1,250 +1,983 @@
 {
-  "epoch_length": 30,
-  "datacenter": {
-    "datacenter_id": "dc_heavy_poisson",
-    "physical_machines": [
-      {
-        "machine_id": "pm1",
-        "cpu_mips": 7000,
-        "memory_mb": 32768,
-        "bandwidth_mbps": 10000,
-        "base_power_watts": 130
-      },
-      {
-        "machine_id": "pm2",
-        "cpu_mips": 7000,
-        "memory_mb": 32768,
-        "bandwidth_mbps": 10000,
-        "base_power_watts": 115
-      }
-    ],
-    "virtual_machines": [
-      {
-        "vm_id": "vm1",
-        "vm_type": "medium",
-        "host_machine_id": "pm1",
-        "cpu_mips": 1200,
-        "memory_mb": 4096,
-        "bandwidth_mbps": 300,
-        "idle_watts": 26,
-        "max_watts": 78,
-        "vcpu_count": 4,
-        "availability_time": 0
-      },
-      {
-        "vm_id": "vm2",
-        "vm_type": "small",
-        "host_machine_id": "pm1",
-        "cpu_mips": 1000,
-        "memory_mb": 2048,
-        "bandwidth_mbps": 220,
-        "idle_watts": 21,
-        "max_watts": 63,
-        "vcpu_count": 2,
-        "availability_time": 0
-      },
-      {
-        "vm_id": "vm3",
-        "vm_type": "small",
-        "host_machine_id": "pm2",
-        "cpu_mips": 1000,
-        "memory_mb": 2048,
-        "bandwidth_mbps": 220,
-        "idle_watts": 21,
-        "max_watts": 63,
-        "vcpu_count": 2,
-        "availability_time": 1
-      },
-      {
-        "vm_id": "vm4",
-        "vm_type": "small",
-        "host_machine_id": "pm2",
-        "cpu_mips": 900,
-        "memory_mb": 2048,
-        "bandwidth_mbps": 200,
-        "idle_watts": 20,
-        "max_watts": 60,
-        "vcpu_count": 2,
-        "availability_time": 0
-      }
-    ]
-  },
-  "tasks": [
-    {
-      "task_id": "t1",
-      "workload_mi": 2600,
-      "arrival_time": 0,
-      "deadline": 4,
-      "cpu_demand_mips": 420,
-      "memory_demand_mb": 512,
-      "io_size_mb": 18
-    },
-    {
-      "task_id": "t2",
-      "workload_mi": 3100,
-      "arrival_time": 0,
-      "deadline": 5,
-      "cpu_demand_mips": 480,
-      "memory_demand_mb": 768,
-      "io_size_mb": 22
-    },
-    {
-      "task_id": "t3",
-      "workload_mi": 2800,
-      "arrival_time": 1,
-      "deadline": 5,
-      "cpu_demand_mips": 450,
-      "memory_demand_mb": 640,
-      "io_size_mb": 20
-    },
-    {
-      "task_id": "t4",
-      "workload_mi": 3600,
-      "arrival_time": 1,
-      "deadline": 6,
-      "cpu_demand_mips": 560,
-      "memory_demand_mb": 896,
-      "io_size_mb": 24
-    },
-    {
-      "task_id": "t5",
-      "workload_mi": 2400,
-      "arrival_time": 1,
-      "deadline": 5,
-      "cpu_demand_mips": 390,
-      "memory_demand_mb": 512,
-      "io_size_mb": 17
-    },
-    {
-      "task_id": "t6",
-      "workload_mi": 4200,
-      "arrival_time": 2,
-      "deadline": 7,
-      "cpu_demand_mips": 620,
-      "memory_demand_mb": 1024,
-      "io_size_mb": 28
-    },
-    {
-      "task_id": "t7",
-      "workload_mi": 3000,
-      "arrival_time": 2,
-      "deadline": 6,
-      "cpu_demand_mips": 470,
-      "memory_demand_mb": 768,
-      "io_size_mb": 22
-    },
-    {
-      "task_id": "t8",
-      "workload_mi": 3400,
-      "arrival_time": 3,
-      "deadline": 8,
-      "cpu_demand_mips": 540,
-      "memory_demand_mb": 896,
-      "io_size_mb": 25
-    },
-    {
-      "task_id": "t9",
-      "workload_mi": 4600,
-      "arrival_time": 3,
-      "deadline": 9,
-      "cpu_demand_mips": 700,
-      "memory_demand_mb": 1152,
-      "io_size_mb": 30
-    },
-    {
-      "task_id": "t10",
-      "workload_mi": 2700,
-      "arrival_time": 4,
-      "deadline": 8,
-      "cpu_demand_mips": 430,
-      "memory_demand_mb": 640,
-      "io_size_mb": 19
-    },
-    {
-      "task_id": "t11",
-      "workload_mi": 3900,
-      "arrival_time": 4,
-      "deadline": 9,
-      "cpu_demand_mips": 600,
-      "memory_demand_mb": 1024,
-      "io_size_mb": 27
-    },
-    {
-      "task_id": "t12",
-      "workload_mi": 3200,
-      "arrival_time": 5,
-      "deadline": 10,
-      "cpu_demand_mips": 500,
-      "memory_demand_mb": 768,
-      "io_size_mb": 23
-    },
-    {
-      "task_id": "t13",
-      "workload_mi": 3500,
-      "arrival_time": 5,
-      "deadline": 10,
-      "cpu_demand_mips": 550,
-      "memory_demand_mb": 896,
-      "io_size_mb": 24
-    },
-    {
-      "task_id": "t14",
-      "workload_mi": 2500,
-      "arrival_time": 6,
-      "deadline": 10,
-      "cpu_demand_mips": 400,
-      "memory_demand_mb": 512,
-      "io_size_mb": 18
-    },
-    {
-      "task_id": "t15",
-      "workload_mi": 4300,
-      "arrival_time": 7,
-      "deadline": 12,
-      "cpu_demand_mips": 660,
-      "memory_demand_mb": 1152,
-      "io_size_mb": 29
-    },
-    {
-      "task_id": "t16",
-      "workload_mi": 2900,
-      "arrival_time": 8,
-      "deadline": 12,
-      "cpu_demand_mips": 460,
-      "memory_demand_mb": 640,
-      "io_size_mb": 21
-    },
-    {
-      "task_id": "t17",
-      "workload_mi": 3700,
-      "arrival_time": 9,
-      "deadline": 14,
-      "cpu_demand_mips": 580,
-      "memory_demand_mb": 896,
-      "io_size_mb": 26
-    },
-    {
-      "task_id": "t18",
-      "workload_mi": 4100,
-      "arrival_time": 10,
-      "deadline": 15,
-      "cpu_demand_mips": 640,
-      "memory_demand_mb": 1024,
-      "io_size_mb": 28
-    },
-    {
-      "task_id": "t19",
-      "workload_mi": 6100,
-      "arrival_time": 12,
-      "deadline": 8,
-      "cpu_demand_mips": 1200,
-      "memory_demand_mb": 2048,
-      "io_size_mb": 36
-    }
-  ],
-  "metadata": {
-    "workload_profile": "semi-heavy",
-    "arrival_model": "Poisson-like burst arrivals",
-    "notes": "Arrival times are clustered to emulate Poisson burst behavior and induce moderate SLA violations under realistic scheduling."
-  }
+    "epoch_length":  10,
+    "datacenter":  {
+                       "datacenter_id":  "dc_heavy_poisson",
+                       "physical_machines":  [
+                                                 {
+                                                     "machine_id":  "pm1",
+                                                     "cpu_mips":  7000,
+                                                     "memory_mb":  32768,
+                                                     "bandwidth_mbps":  10000,
+                                                     "base_power_watts":  130
+                                                 },
+                                                 {
+                                                     "machine_id":  "pm2",
+                                                     "cpu_mips":  7000,
+                                                     "memory_mb":  32768,
+                                                     "bandwidth_mbps":  10000,
+                                                     "base_power_watts":  115
+                                                 }
+                                             ],
+                       "virtual_machines":  [
+                                                {
+                                                    "vm_id":  "vm1",
+                                                    "vm_type":  "medium",
+                                                    "host_machine_id":  "pm1",
+                                                    "cpu_mips":  1200,
+                                                    "memory_mb":  4096,
+                                                    "bandwidth_mbps":  300,
+                                                    "idle_watts":  26,
+                                                    "max_watts":  78,
+                                                    "vcpu_count":  4,
+                                                    "availability_time":  0
+                                                },
+                                                {
+                                                    "vm_id":  "vm2",
+                                                    "vm_type":  "small",
+                                                    "host_machine_id":  "pm1",
+                                                    "cpu_mips":  1000,
+                                                    "memory_mb":  2048,
+                                                    "bandwidth_mbps":  220,
+                                                    "idle_watts":  21,
+                                                    "max_watts":  63,
+                                                    "vcpu_count":  2,
+                                                    "availability_time":  0
+                                                },
+                                                {
+                                                    "vm_id":  "vm3",
+                                                    "vm_type":  "small",
+                                                    "host_machine_id":  "pm2",
+                                                    "cpu_mips":  1000,
+                                                    "memory_mb":  2048,
+                                                    "bandwidth_mbps":  220,
+                                                    "idle_watts":  21,
+                                                    "max_watts":  63,
+                                                    "vcpu_count":  2,
+                                                    "availability_time":  1
+                                                },
+                                                {
+                                                    "vm_id":  "vm4",
+                                                    "vm_type":  "small",
+                                                    "host_machine_id":  "pm2",
+                                                    "cpu_mips":  900,
+                                                    "memory_mb":  2048,
+                                                    "bandwidth_mbps":  200,
+                                                    "idle_watts":  20,
+                                                    "max_watts":  60,
+                                                    "vcpu_count":  2,
+                                                    "availability_time":  0
+                                                }
+                                            ]
+                   },
+    "tasks":  [
+                  {
+                      "task_id":  "t1",
+                      "workload_mi":  3879,
+                      "arrival_time":  0.02,
+                      "deadline":  6.783,
+                      "cpu_demand_mips":  707,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t2",
+                      "workload_mi":  4089,
+                      "arrival_time":  0.084,
+                      "deadline":  5.776,
+                      "cpu_demand_mips":  613,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  21
+                  },
+                  {
+                      "task_id":  "t3",
+                      "workload_mi":  2444,
+                      "arrival_time":  0.23,
+                      "deadline":  4.08,
+                      "cpu_demand_mips":  815,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t4",
+                      "workload_mi":  3431,
+                      "arrival_time":  0.98,
+                      "deadline":  6.95,
+                      "cpu_demand_mips":  692,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  24
+                  },
+                  {
+                      "task_id":  "t5",
+                      "workload_mi":  3809,
+                      "arrival_time":  1.13,
+                      "deadline":  8.159,
+                      "cpu_demand_mips":  465,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  16
+                  },
+                  {
+                      "task_id":  "t6",
+                      "workload_mi":  3837,
+                      "arrival_time":  1.459,
+                      "deadline":  9.079,
+                      "cpu_demand_mips":  720,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t7",
+                      "workload_mi":  4840,
+                      "arrival_time":  1.57,
+                      "deadline":  8.545,
+                      "cpu_demand_mips":  754,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  17
+                  },
+                  {
+                      "task_id":  "t8",
+                      "workload_mi":  5147,
+                      "arrival_time":  1.746,
+                      "deadline":  6.704,
+                      "cpu_demand_mips":  569,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t9",
+                      "workload_mi":  2111,
+                      "arrival_time":  1.764,
+                      "deadline":  4.927,
+                      "cpu_demand_mips":  496,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t10",
+                      "workload_mi":  2814,
+                      "arrival_time":  1.804,
+                      "deadline":  7.237,
+                      "cpu_demand_mips":  487,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  17
+                  },
+                  {
+                      "task_id":  "t11",
+                      "workload_mi":  4055,
+                      "arrival_time":  1.835,
+                      "deadline":  9.09,
+                      "cpu_demand_mips":  464,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  13
+                  },
+                  {
+                      "task_id":  "t12",
+                      "workload_mi":  2713,
+                      "arrival_time":  1.84,
+                      "deadline":  5.308,
+                      "cpu_demand_mips":  698,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  35
+                  },
+                  {
+                      "task_id":  "t13",
+                      "workload_mi":  4721,
+                      "arrival_time":  1.897,
+                      "deadline":  8.172,
+                      "cpu_demand_mips":  387,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  23
+                  },
+                  {
+                      "task_id":  "t14",
+                      "workload_mi":  2864,
+                      "arrival_time":  2.067,
+                      "deadline":  6.003,
+                      "cpu_demand_mips":  507,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  18
+                  },
+                  {
+                      "task_id":  "t15",
+                      "workload_mi":  5012,
+                      "arrival_time":  2.091,
+                      "deadline":  7.557,
+                      "cpu_demand_mips":  671,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  11
+                  },
+                  {
+                      "task_id":  "t16",
+                      "workload_mi":  2448,
+                      "arrival_time":  2.29,
+                      "deadline":  7.678,
+                      "cpu_demand_mips":  767,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  13
+                  },
+                  {
+                      "task_id":  "t17",
+                      "workload_mi":  2535,
+                      "arrival_time":  2.365,
+                      "deadline":  6.337,
+                      "cpu_demand_mips":  532,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  25
+                  },
+                  {
+                      "task_id":  "t18",
+                      "workload_mi":  3678,
+                      "arrival_time":  2.416,
+                      "deadline":  7.913,
+                      "cpu_demand_mips":  433,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  21
+                  },
+                  {
+                      "task_id":  "t19",
+                      "workload_mi":  2519,
+                      "arrival_time":  2.62,
+                      "deadline":  8.353,
+                      "cpu_demand_mips":  777,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  36
+                  },
+                  {
+                      "task_id":  "t20",
+                      "workload_mi":  4837,
+                      "arrival_time":  2.713,
+                      "deadline":  9.655,
+                      "cpu_demand_mips":  369,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  17
+                  },
+                  {
+                      "task_id":  "t21",
+                      "workload_mi":  4784,
+                      "arrival_time":  2.973,
+                      "deadline":  8.71,
+                      "cpu_demand_mips":  672,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  9
+                  },
+                  {
+                      "task_id":  "t22",
+                      "workload_mi":  4996,
+                      "arrival_time":  2.981,
+                      "deadline":  9.188,
+                      "cpu_demand_mips":  280,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  26
+                  },
+                  {
+                      "task_id":  "t23",
+                      "workload_mi":  3047,
+                      "arrival_time":  3.038,
+                      "deadline":  10,
+                      "cpu_demand_mips":  698,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t24",
+                      "workload_mi":  3135,
+                      "arrival_time":  3.083,
+                      "deadline":  6.321,
+                      "cpu_demand_mips":  338,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  15
+                  },
+                  {
+                      "task_id":  "t25",
+                      "workload_mi":  1899,
+                      "arrival_time":  3.203,
+                      "deadline":  5.976,
+                      "cpu_demand_mips":  301,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  31
+                  },
+                  {
+                      "task_id":  "t26",
+                      "workload_mi":  1887,
+                      "arrival_time":  3.362,
+                      "deadline":  9.416,
+                      "cpu_demand_mips":  628,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  23
+                  },
+                  {
+                      "task_id":  "t27",
+                      "workload_mi":  1884,
+                      "arrival_time":  3.364,
+                      "deadline":  9.426,
+                      "cpu_demand_mips":  813,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  18
+                  },
+                  {
+                      "task_id":  "t28",
+                      "workload_mi":  3470,
+                      "arrival_time":  3.394,
+                      "deadline":  7.696,
+                      "cpu_demand_mips":  536,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t29",
+                      "workload_mi":  3676,
+                      "arrival_time":  3.429,
+                      "deadline":  6.908,
+                      "cpu_demand_mips":  725,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  31
+                  },
+                  {
+                      "task_id":  "t30",
+                      "workload_mi":  3287,
+                      "arrival_time":  3.623,
+                      "deadline":  7.196,
+                      "cpu_demand_mips":  542,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  9
+                  },
+                  {
+                      "task_id":  "t31",
+                      "workload_mi":  4467,
+                      "arrival_time":  3.731,
+                      "deadline":  10,
+                      "cpu_demand_mips":  577,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  13
+                  },
+                  {
+                      "task_id":  "t32",
+                      "workload_mi":  4647,
+                      "arrival_time":  3.832,
+                      "deadline":  9.427,
+                      "cpu_demand_mips":  569,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t33",
+                      "workload_mi":  2805,
+                      "arrival_time":  3.864,
+                      "deadline":  9.934,
+                      "cpu_demand_mips":  634,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t34",
+                      "workload_mi":  3092,
+                      "arrival_time":  3.871,
+                      "deadline":  8.948,
+                      "cpu_demand_mips":  338,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t35",
+                      "workload_mi":  4920,
+                      "arrival_time":  3.927,
+                      "deadline":  9.63,
+                      "cpu_demand_mips":  326,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  34
+                  },
+                  {
+                      "task_id":  "t36",
+                      "workload_mi":  2501,
+                      "arrival_time":  3.965,
+                      "deadline":  9.833,
+                      "cpu_demand_mips":  446,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  26
+                  },
+                  {
+                      "task_id":  "t37",
+                      "workload_mi":  3638,
+                      "arrival_time":  4.144,
+                      "deadline":  10,
+                      "cpu_demand_mips":  280,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  18
+                  },
+                  {
+                      "task_id":  "t38",
+                      "workload_mi":  3413,
+                      "arrival_time":  4.348,
+                      "deadline":  10,
+                      "cpu_demand_mips":  458,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  25
+                  },
+                  {
+                      "task_id":  "t39",
+                      "workload_mi":  5050,
+                      "arrival_time":  4.396,
+                      "deadline":  7.073,
+                      "cpu_demand_mips":  439,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  21
+                  },
+                  {
+                      "task_id":  "t40",
+                      "workload_mi":  4850,
+                      "arrival_time":  4.401,
+                      "deadline":  10,
+                      "cpu_demand_mips":  769,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t41",
+                      "workload_mi":  2920,
+                      "arrival_time":  4.811,
+                      "deadline":  8.837,
+                      "cpu_demand_mips":  510,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  24
+                  },
+                  {
+                      "task_id":  "t42",
+                      "workload_mi":  4177,
+                      "arrival_time":  4.92,
+                      "deadline":  10,
+                      "cpu_demand_mips":  802,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  25
+                  },
+                  {
+                      "task_id":  "t43",
+                      "workload_mi":  3602,
+                      "arrival_time":  4.933,
+                      "deadline":  7.555,
+                      "cpu_demand_mips":  355,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  19
+                  },
+                  {
+                      "task_id":  "t44",
+                      "workload_mi":  2802,
+                      "arrival_time":  5.106,
+                      "deadline":  8.566,
+                      "cpu_demand_mips":  466,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t45",
+                      "workload_mi":  1973,
+                      "arrival_time":  5.123,
+                      "deadline":  10,
+                      "cpu_demand_mips":  626,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  36
+                  },
+                  {
+                      "task_id":  "t46",
+                      "workload_mi":  3917,
+                      "arrival_time":  5.138,
+                      "deadline":  10,
+                      "cpu_demand_mips":  322,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  34
+                  },
+                  {
+                      "task_id":  "t47",
+                      "workload_mi":  2823,
+                      "arrival_time":  5.222,
+                      "deadline":  9.278,
+                      "cpu_demand_mips":  591,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  32
+                  },
+                  {
+                      "task_id":  "t48",
+                      "workload_mi":  2188,
+                      "arrival_time":  5.281,
+                      "deadline":  8.677,
+                      "cpu_demand_mips":  358,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  10
+                  },
+                  {
+                      "task_id":  "t49",
+                      "workload_mi":  3530,
+                      "arrival_time":  5.291,
+                      "deadline":  9.334,
+                      "cpu_demand_mips":  605,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t50",
+                      "workload_mi":  4578,
+                      "arrival_time":  5.318,
+                      "deadline":  10,
+                      "cpu_demand_mips":  685,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t51",
+                      "workload_mi":  3677,
+                      "arrival_time":  5.816,
+                      "deadline":  10,
+                      "cpu_demand_mips":  462,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  36
+                  },
+                  {
+                      "task_id":  "t52",
+                      "workload_mi":  4145,
+                      "arrival_time":  5.863,
+                      "deadline":  10,
+                      "cpu_demand_mips":  801,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  9
+                  },
+                  {
+                      "task_id":  "t53",
+                      "workload_mi":  3908,
+                      "arrival_time":  5.918,
+                      "deadline":  9.91,
+                      "cpu_demand_mips":  739,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  34
+                  },
+                  {
+                      "task_id":  "t54",
+                      "workload_mi":  5042,
+                      "arrival_time":  5.938,
+                      "deadline":  10,
+                      "cpu_demand_mips":  759,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  11
+                  },
+                  {
+                      "task_id":  "t55",
+                      "workload_mi":  2309,
+                      "arrival_time":  6.042,
+                      "deadline":  10,
+                      "cpu_demand_mips":  605,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  36
+                  },
+                  {
+                      "task_id":  "t56",
+                      "workload_mi":  3326,
+                      "arrival_time":  6.176,
+                      "deadline":  10,
+                      "cpu_demand_mips":  706,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  28
+                  },
+                  {
+                      "task_id":  "t57",
+                      "workload_mi":  4771,
+                      "arrival_time":  6.267,
+                      "deadline":  9.501,
+                      "cpu_demand_mips":  538,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t58",
+                      "workload_mi":  5077,
+                      "arrival_time":  6.291,
+                      "deadline":  10,
+                      "cpu_demand_mips":  813,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  10
+                  },
+                  {
+                      "task_id":  "t59",
+                      "workload_mi":  2311,
+                      "arrival_time":  6.339,
+                      "deadline":  10,
+                      "cpu_demand_mips":  424,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t60",
+                      "workload_mi":  4045,
+                      "arrival_time":  6.705,
+                      "deadline":  10,
+                      "cpu_demand_mips":  698,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  29
+                  },
+                  {
+                      "task_id":  "t61",
+                      "workload_mi":  4965,
+                      "arrival_time":  6.711,
+                      "deadline":  10,
+                      "cpu_demand_mips":  300,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  23
+                  },
+                  {
+                      "task_id":  "t62",
+                      "workload_mi":  5030,
+                      "arrival_time":  6.761,
+                      "deadline":  10,
+                      "cpu_demand_mips":  734,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  16
+                  },
+                  {
+                      "task_id":  "t63",
+                      "workload_mi":  4866,
+                      "arrival_time":  6.834,
+                      "deadline":  10,
+                      "cpu_demand_mips":  564,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  18
+                  },
+                  {
+                      "task_id":  "t64",
+                      "workload_mi":  2286,
+                      "arrival_time":  6.867,
+                      "deadline":  10,
+                      "cpu_demand_mips":  376,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  31
+                  },
+                  {
+                      "task_id":  "t65",
+                      "workload_mi":  5090,
+                      "arrival_time":  6.968,
+                      "deadline":  10,
+                      "cpu_demand_mips":  606,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  23
+                  },
+                  {
+                      "task_id":  "t66",
+                      "workload_mi":  4804,
+                      "arrival_time":  7.059,
+                      "deadline":  9.59,
+                      "cpu_demand_mips":  774,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t67",
+                      "workload_mi":  4098,
+                      "arrival_time":  7.192,
+                      "deadline":  10,
+                      "cpu_demand_mips":  748,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  18
+                  },
+                  {
+                      "task_id":  "t68",
+                      "workload_mi":  4642,
+                      "arrival_time":  7.237,
+                      "deadline":  10,
+                      "cpu_demand_mips":  819,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  24
+                  },
+                  {
+                      "task_id":  "t69",
+                      "workload_mi":  2219,
+                      "arrival_time":  7.283,
+                      "deadline":  10,
+                      "cpu_demand_mips":  481,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t70",
+                      "workload_mi":  3924,
+                      "arrival_time":  7.488,
+                      "deadline":  10,
+                      "cpu_demand_mips":  325,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  26
+                  },
+                  {
+                      "task_id":  "t71",
+                      "workload_mi":  3441,
+                      "arrival_time":  7.491,
+                      "deadline":  10,
+                      "cpu_demand_mips":  336,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t72",
+                      "workload_mi":  2912,
+                      "arrival_time":  7.594,
+                      "deadline":  10,
+                      "cpu_demand_mips":  504,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t73",
+                      "workload_mi":  1922,
+                      "arrival_time":  7.595,
+                      "deadline":  10,
+                      "cpu_demand_mips":  690,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  16
+                  },
+                  {
+                      "task_id":  "t74",
+                      "workload_mi":  1920,
+                      "arrival_time":  7.763,
+                      "deadline":  10,
+                      "cpu_demand_mips":  734,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  25
+                  },
+                  {
+                      "task_id":  "t75",
+                      "workload_mi":  2298,
+                      "arrival_time":  7.859,
+                      "deadline":  10,
+                      "cpu_demand_mips":  303,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  25
+                  },
+                  {
+                      "task_id":  "t76",
+                      "workload_mi":  3824,
+                      "arrival_time":  7.886,
+                      "deadline":  10,
+                      "cpu_demand_mips":  618,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  32
+                  },
+                  {
+                      "task_id":  "t77",
+                      "workload_mi":  4516,
+                      "arrival_time":  8.169,
+                      "deadline":  10,
+                      "cpu_demand_mips":  595,
+                      "memory_demand_mb":  768,
+                      "io_size_mb":  9
+                  },
+                  {
+                      "task_id":  "t78",
+                      "workload_mi":  3744,
+                      "arrival_time":  8.258,
+                      "deadline":  10,
+                      "cpu_demand_mips":  681,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  8
+                  },
+                  {
+                      "task_id":  "t79",
+                      "workload_mi":  3228,
+                      "arrival_time":  8.28,
+                      "deadline":  10,
+                      "cpu_demand_mips":  303,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  33
+                  },
+                  {
+                      "task_id":  "t80",
+                      "workload_mi":  3037,
+                      "arrival_time":  8.36,
+                      "deadline":  10,
+                      "cpu_demand_mips":  384,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t81",
+                      "workload_mi":  4466,
+                      "arrival_time":  8.384,
+                      "deadline":  10,
+                      "cpu_demand_mips":  427,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  28
+                  },
+                  {
+                      "task_id":  "t82",
+                      "workload_mi":  3290,
+                      "arrival_time":  8.458,
+                      "deadline":  10,
+                      "cpu_demand_mips":  284,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  15
+                  },
+                  {
+                      "task_id":  "t83",
+                      "workload_mi":  4188,
+                      "arrival_time":  8.476,
+                      "deadline":  10,
+                      "cpu_demand_mips":  596,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  26
+                  },
+                  {
+                      "task_id":  "t84",
+                      "workload_mi":  3339,
+                      "arrival_time":  8.481,
+                      "deadline":  10,
+                      "cpu_demand_mips":  449,
+                      "memory_demand_mb":  384,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t85",
+                      "workload_mi":  2799,
+                      "arrival_time":  8.679,
+                      "deadline":  10,
+                      "cpu_demand_mips":  605,
+                      "memory_demand_mb":  1536,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t86",
+                      "workload_mi":  2150,
+                      "arrival_time":  8.711,
+                      "deadline":  10,
+                      "cpu_demand_mips":  654,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  21
+                  },
+                  {
+                      "task_id":  "t87",
+                      "workload_mi":  3167,
+                      "arrival_time":  8.734,
+                      "deadline":  10,
+                      "cpu_demand_mips":  790,
+                      "memory_demand_mb":  1024,
+                      "io_size_mb":  13
+                  },
+                  {
+                      "task_id":  "t88",
+                      "workload_mi":  3589,
+                      "arrival_time":  8.744,
+                      "deadline":  10,
+                      "cpu_demand_mips":  738,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t89",
+                      "workload_mi":  3715,
+                      "arrival_time":  8.792,
+                      "deadline":  10,
+                      "cpu_demand_mips":  404,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  15
+                  },
+                  {
+                      "task_id":  "t90",
+                      "workload_mi":  4641,
+                      "arrival_time":  8.901,
+                      "deadline":  10,
+                      "cpu_demand_mips":  781,
+                      "memory_demand_mb":  1280,
+                      "io_size_mb":  35
+                  },
+                  {
+                      "task_id":  "t91",
+                      "workload_mi":  1968,
+                      "arrival_time":  9.017,
+                      "deadline":  10,
+                      "cpu_demand_mips":  306,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  11
+                  },
+                  {
+                      "task_id":  "t92",
+                      "workload_mi":  2422,
+                      "arrival_time":  9.109,
+                      "deadline":  10,
+                      "cpu_demand_mips":  534,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  12
+                  },
+                  {
+                      "task_id":  "t93",
+                      "workload_mi":  4340,
+                      "arrival_time":  9.171,
+                      "deadline":  10,
+                      "cpu_demand_mips":  702,
+                      "memory_demand_mb":  256,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t94",
+                      "workload_mi":  4377,
+                      "arrival_time":  9.223,
+                      "deadline":  10,
+                      "cpu_demand_mips":  778,
+                      "memory_demand_mb":  1792,
+                      "io_size_mb":  16
+                  },
+                  {
+                      "task_id":  "t95",
+                      "workload_mi":  3859,
+                      "arrival_time":  9.629,
+                      "deadline":  10,
+                      "cpu_demand_mips":  582,
+                      "memory_demand_mb":  640,
+                      "io_size_mb":  28
+                  },
+                  {
+                      "task_id":  "t96",
+                      "workload_mi":  2015,
+                      "arrival_time":  9.709,
+                      "deadline":  10,
+                      "cpu_demand_mips":  616,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  20
+                  },
+                  {
+                      "task_id":  "t97",
+                      "workload_mi":  2396,
+                      "arrival_time":  9.723,
+                      "deadline":  10,
+                      "cpu_demand_mips":  813,
+                      "memory_demand_mb":  512,
+                      "io_size_mb":  30
+                  },
+                  {
+                      "task_id":  "t98",
+                      "workload_mi":  3001,
+                      "arrival_time":  9.888,
+                      "deadline":  10,
+                      "cpu_demand_mips":  301,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  31
+                  },
+                  {
+                      "task_id":  "t99",
+                      "workload_mi":  1987,
+                      "arrival_time":  9.907,
+                      "deadline":  10,
+                      "cpu_demand_mips":  423,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  26
+                  },
+                  {
+                      "task_id":  "t100",
+                      "workload_mi":  4460,
+                      "arrival_time":  9.98,
+                      "deadline":  10,
+                      "cpu_demand_mips":  380,
+                      "memory_demand_mb":  896,
+                      "io_size_mb":  33
+                  }
+              ],
+    "metadata":  {
+                     "workload_profile":  "heavy",
+                     "arrival_model":  "Poisson process (deterministic seed), millisecond-resolution arrivals",
+                     "arrival_time_unit":  "seconds",
+                     "arrival_time_precision":  "millisecond",
+                     "slot_length_unit":  "seconds",
+                     "notes":  "100 tasks over 10 seconds. First six arrivals are fixed examples: 0.020, 0.084, 0.230, 0.980, 1.130, 1.459."
+                 },
+    "slot_length":  1
 }

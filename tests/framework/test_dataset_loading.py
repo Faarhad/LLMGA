@@ -67,6 +67,18 @@ class TestDatasetLoading(unittest.TestCase):
             loaded = loader.load(path)
             self.assertEqual(loaded["epoch_length"], 20)
 
+    def test_load_from_json_with_utf8_bom(self) -> None:
+        loader = DatasetLoader()
+        data = valid_dataset_dict()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "dataset_bom.json"
+            with path.open("w", encoding="utf-8-sig") as f:
+                json.dump(data, f)
+
+            loaded = loader.load(path)
+            self.assertEqual(loaded["epoch_length"], 20)
+
     def test_load_from_csv_bundle_folder(self) -> None:
         loader = DatasetLoader()
 

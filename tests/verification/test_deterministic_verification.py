@@ -32,9 +32,9 @@ class TestDeterministicVerification(unittest.TestCase):
         metrics = run_scenario(dataset, {"t1": "vm1"})
 
         expected_execution = 1.0
-        expected_waiting = 0.0
-        expected_response = 1.0
-        expected_makespan = 1.0
+        expected_waiting = 1.0
+        expected_response = 2.0
+        expected_makespan = 2.0
         expected_idle_energy = 20.0 * 9.0
         expected_active_static = 20.0 * 1.0
         expected_dynamic = linear_dynamic_energy(20.0, 60.0, 0.5, 1.0)
@@ -46,8 +46,8 @@ class TestDeterministicVerification(unittest.TestCase):
         self.assert_metric("makespan", metrics.makespan, expected_makespan)
         self.assert_metric("vm_energy", metrics.energy.total_vm_energy, expected_vm_energy)
         self.assert_metric("total_energy", metrics.energy.total_energy, expected_total_energy)
-        self.assert_metric("utilization(vm1,active)", metrics.utilization.traces["vm1"].intervals[0].utilization, 0.5)
-        self.assert_metric("execution_time", metrics.average_response_time, expected_execution)
+        self.assertTrue(any(abs(interval.utilization - 0.5) < TOLERANCE for interval in metrics.utilization.traces["vm1"].intervals))
+        self.assert_metric("execution_time", metrics.average_response_time - metrics.average_waiting_time, expected_execution)
 
     def test_two_sequential_tasks_on_one_vm(self) -> None:
         pm = make_pm()
@@ -58,9 +58,9 @@ class TestDeterministicVerification(unittest.TestCase):
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm1"})
 
-        expected_waiting_avg = (0.0 + 1.0) / 2.0
-        expected_response_avg = (1.0 + 2.0) / 2.0
-        expected_makespan = 2.0
+        expected_waiting_avg = (1.0 + 2.0) / 2.0
+        expected_response_avg = (2.0 + 3.0) / 2.0
+        expected_makespan = 3.0
 
         self.assert_metric("avg_waiting_time", metrics.average_waiting_time, expected_waiting_avg)
         self.assert_metric("avg_response_time", metrics.average_response_time, expected_response_avg)
@@ -76,10 +76,10 @@ class TestDeterministicVerification(unittest.TestCase):
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm2"})
 
-        self.assert_metric("avg_waiting_time", metrics.average_waiting_time, 0.0)
-        self.assert_metric("avg_response_time", metrics.average_response_time, 1.0)
-        self.assert_metric("makespan", metrics.makespan, 1.0)
-        self.assert_metric("throughput", metrics.throughput, 2.0 / 1.0)
+        self.assert_metric("avg_waiting_time", metrics.average_waiting_time, 1.0)
+        self.assert_metric("avg_response_time", metrics.average_response_time, 2.0)
+        self.assert_metric("makespan", metrics.makespan, 2.0)
+        self.assert_metric("throughput", metrics.throughput, 2.0 / 2.0)
 
     def test_vm_with_carry_over_availability(self) -> None:
         pm = make_pm()
@@ -133,7 +133,7 @@ class TestDeterministicVerification(unittest.TestCase):
         dataset = build_configuration(10.0, [pm], [vm], [t1, t2])
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm1"})
-        expected_waiting_avg = (0.0 + 0.5) / 2.0
+        expected_waiting_avg = (1.0 + 1.5) / 2.0
 
         self.assert_metric("avg_waiting_time", metrics.average_waiting_time, expected_waiting_avg)
 
@@ -145,7 +145,7 @@ class TestDeterministicVerification(unittest.TestCase):
         dataset = build_configuration(10.0, [pm], [vm], [t1, t2])
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm1"})
-        expected_response_avg = ((1.0 - 0.0) + (2.0 - 0.5)) / 2.0
+        expected_response_avg = ((2.0 - 0.0) + (3.0 - 0.5)) / 2.0
 
         self.assert_metric("avg_response_time", metrics.average_response_time, expected_response_avg)
 
@@ -158,7 +158,7 @@ class TestDeterministicVerification(unittest.TestCase):
         dataset = build_configuration(10.0, [pm], [vm1, vm2], [t1, t2])
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm2"})
-        expected_makespan = 3.0
+        expected_makespan = 4.0
 
         self.assert_metric("makespan", metrics.makespan, expected_makespan)
 
@@ -169,11 +169,11 @@ class TestDeterministicVerification(unittest.TestCase):
         dataset = build_configuration(10.0, [pm], [vm], [task])
 
         metrics = run_scenario(dataset, {"t1": "vm1"})
-        expected_completion = 3.0
+        expected_completion = 4.0
         expected_penalty = exponential_sla_penalty(expected_completion, 2.0)
 
-        self.assert_metric("deadline_violation", metrics.sla.per_task["t1"].deadline_violation, 1.0)
-        self.assert_metric("normalized_violation", metrics.sla.per_task["t1"].normalized_violation, 0.5)
+        self.assert_metric("deadline_violation", metrics.sla.per_task["t1"].deadline_violation, 2.0)
+        self.assert_metric("normalized_violation", metrics.sla.per_task["t1"].normalized_violation, 1.0)
         self.assert_metric("sla_aggregate_penalty", metrics.sla.aggregate_penalty, expected_penalty)
 
     def test_jain_fairness_validation(self) -> None:
@@ -186,8 +186,8 @@ class TestDeterministicVerification(unittest.TestCase):
 
         metrics = run_scenario(dataset, {"t1": "vm1", "t2": "vm2"})
 
-        penalty_1 = exponential_sla_penalty(3.0, 2.0)
-        penalty_2 = exponential_sla_penalty(4.0, 2.0)
+        penalty_1 = exponential_sla_penalty(4.0, 2.0)
+        penalty_2 = exponential_sla_penalty(5.0, 2.0)
         expected_jain = jain_index([penalty_1, penalty_2])
 
         self.assert_metric("jain_index", metrics.fairness.jain_index, expected_jain)

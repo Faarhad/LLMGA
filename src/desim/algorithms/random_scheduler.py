@@ -1,8 +1,8 @@
 import random
 from typing import Dict, List
 
-from ..framework.models import Task, VirtualMachine
-from .base import Scheduler, SchedulingResult
+from ..framework.models import Task
+from .base import Scheduler, SchedulingResult, VmStateView
 
 
 class RandomScheduler(Scheduler):
@@ -11,12 +11,14 @@ class RandomScheduler(Scheduler):
     def __init__(self, seed: int | None = None) -> None:
         self._rng = random.Random(seed)
 
-    def schedule(self, tasks: List[Task], virtual_machines: List[VirtualMachine]) -> SchedulingResult:
-        if not virtual_machines and tasks:
+    def schedule(self, waiting_tasks: List[Task], vm_states: List[VmStateView]) -> SchedulingResult:
+        virtual_machines = [vm_state.vm for vm_state in vm_states]
+
+        if not virtual_machines and waiting_tasks:
             raise ValueError("cannot schedule tasks without virtual machines")
 
         mapping: Dict[str, str] = {}
-        for task in tasks:
+        for task in waiting_tasks:
             feasible_vm_ids = [
                 vm.vm_id
                 for vm in virtual_machines
@@ -34,12 +36,12 @@ class RandomScheduler(Scheduler):
     def generate_random_schedules(
         self,
         tasks: List[Task],
-        virtual_machines: List[VirtualMachine],
+        vm_states: List[VmStateView],
         count: int,
     ) -> List[SchedulingResult]:
         if count < 0:
             raise ValueError("count must be >= 0")
-        return [self.schedule(tasks, virtual_machines) for _ in range(count)]
+        return [self.schedule(tasks, vm_states) for _ in range(count)]
 
 
 def create_scheduler(options: dict | None = None, seed: int | None = None) -> RandomScheduler:

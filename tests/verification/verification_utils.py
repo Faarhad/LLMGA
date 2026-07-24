@@ -13,8 +13,10 @@ class FixedScheduler(Scheduler):
     def __init__(self, mapping: Dict[str, str]):
         self.mapping = dict(mapping)
 
-    def schedule(self, tasks, virtual_machines):
-        return SchedulingResult(task_to_vm=self.mapping)
+    def schedule(self, waiting_tasks, vm_states):
+        waiting_ids = {task.task_id for task in waiting_tasks}
+        filtered = {task_id: vm_id for task_id, vm_id in self.mapping.items() if task_id in waiting_ids}
+        return SchedulingResult(task_to_vm=filtered)
 
 
 def make_pm(machine_id: str = "pm1", base_power_watts: float = 100.0) -> PhysicalMachine:
