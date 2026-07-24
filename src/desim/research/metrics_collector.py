@@ -3,6 +3,7 @@ from typing import Dict, List
 
 from .energy import DatacenterEnergyBreakdown, QuadraticEnergyModel
 from .fairness import FairnessModel, FairnessParameters, FairnessResult
+from .paper_objective import compute_paper_fitness
 from .sla import ExponentialSLAPenaltyModel, SLAAggregateResult, SLAParameters
 from ..framework.event import Event
 from ..framework.models import CloudConfiguration
@@ -123,10 +124,11 @@ class MetricsCollector:
 
         avg_util_per_vm, cpu_occupancy = self._utilization_metrics(utilization, epoch_length)
 
-        sla_objective = sla.aggregate_penalty + (self.fitness_parameters.xi * fairness.combined_fairness)
-        fitness = (
-            self.fitness_parameters.w_energy * (energy.total_energy / self.fitness_parameters.energy_norm_max)
-            + self.fitness_parameters.w_sla * (sla_objective / self.fitness_parameters.sla_norm_max)
+        fitness = compute_paper_fitness(
+            energy_total=energy.total_energy,
+            aggregate_sla_penalty=sla.aggregate_penalty,
+            combined_fairness=fairness.combined_fairness,
+            fitness_parameters=self.fitness_parameters,
         )
 
         return MetricsSnapshot(

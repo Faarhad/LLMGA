@@ -1,7 +1,12 @@
 import random
-from typing import Dict, List
+from typing import List
 
-from ..framework.models import Task, VirtualMachine
+from ..framework.models import Datacenter, PhysicalMachine, ResourceCapacity, Task, VirtualMachine
+from ..research.assignment_evaluator import AssignmentEvaluation, AssignmentEvaluator
+from ..research.energy import QuadraticEnergyModel
+from ..research.fairness import FairnessModel, FairnessParameters
+from ..research.metrics_collector import FitnessParameters
+from ..research.sla import ExponentialSLAPenaltyModel, SLAParameters
 from .base import Scheduler, SchedulingResult, VmStateView
 
 
@@ -16,7 +21,7 @@ class GeneticAlgorithmScheduler(Scheduler):
         mutation_rate: float = 0.08,
         tournament_size: int = 3,
         elitism_count: int = 1,
-        sla_weight: float = 2.0,
+        sla_weight: float | None = None,
         seed: int | None = None,
     ) -> None:
         if population_size <= 1:
@@ -33,8 +38,6 @@ class GeneticAlgorithmScheduler(Scheduler):
             raise ValueError("elitism_count must be >= 0")
         if elitism_count >= population_size:
             raise ValueError("elitism_count must be < population_size")
-        if sla_weight < 0:
-            raise ValueError("sla_weight must be >= 0")
 
         self.population_size = population_size
         self.generations = generations
@@ -44,9 +47,35 @@ class GeneticAlgorithmScheduler(Scheduler):
         self.elitism_count = elitism_count
         self.sla_weight = sla_weight
         self._rng = random.Random(seed)
+        self._runtime_now = 0.0
+        self._evaluator: AssignmentEvaluator | None = None
+        self._last_selected_evaluation: AssignmentEvaluation | None = None
+
+    def configure_paper_objective(
+        self,
+        datacenter: Datacenter,
+        fitness_parameters: FitnessParameters,
+        energy_model: QuadraticEnergyModel,
+        sla_model: ExponentialSLAPenaltyModel,
+        fairness_model: FairnessModel,
+    ) -> None:
+        self._evaluator = AssignmentEvaluator(
+            datacenter=datacenter,
+            energy_model=energy_model,
+            sla_model=sla_model,
+            fairness_model=fairness_model,
+            fitness_parameters=fitness_parameters,
+        )
+
+    def set_runtime_context(self, now: float) -> None:
+        self._runtime_now = now
+
+    def get_last_selected_evaluation(self) -> AssignmentEvaluation | None:
+        return self._last_selected_evaluation
 
     def schedule(self, waiting_tasks: List[Task], vm_states: List[VmStateView]) -> SchedulingResult:
         virtual_machines = [vm_state.vm for vm_state in vm_states]
+        self._last_selected_evaluation = None
 
         if not virtual_machines and waiting_tasks:
             raise ValueError("cannot schedule tasks without virtual machines")
@@ -57,12 +86,12 @@ class GeneticAlgorithmScheduler(Scheduler):
         population = [self._random_chromosome(feasible) for _ in range(self.population_size)]
 
         for _ in range(self.generations):
-            ranked = sorted(population, key=lambda c: self._objective(c, waiting_tasks, virtual_machines))
+            ranked = sorted(population, key=lambda c: self._objective(c, waiting_tasks, vm_states))
             next_population = ranked[: self.elitism_count]
 
             while len(next_population) < self.population_size:
-                parent_a = self._tournament_select(population, waiting_tasks, virtual_machines)
-                parent_b = self._tournament_select(population, waiting_tasks, virtual_machines)
+                parent_a = self._tournament_select(population, waiting_tasks, vm_states)
+                parent_b = self._tournament_select(population, waiting_tasks, vm_states)
 
                 child_a, child_b = self._crossover(parent_a, parent_b)
                 self._mutate(child_a, feasible)
@@ -74,10 +103,19 @@ class GeneticAlgorithmScheduler(Scheduler):
 
             population = next_population
 
-        best = min(population, key=lambda c: self._objective(c, waiting_tasks, virtual_machines))
-        mapping = {
+        best = min(population, key=lambda c: self._objective(c, waiting_tasks, vm_states))
+        best_mapping = {
             task.task_id: virtual_machines[best[i]].vm_id
             for i, task in enumerate(waiting_tasks)
+        }
+        self._last_selected_evaluation = self._evaluate_assignment(
+            chromosome=best,
+            tasks=waiting_tasks,
+            vm_states=vm_states,
+        )
+        mapping = {
+            task_id: vm_id
+            for task_id, vm_id in best_mapping.items()
         }
         return SchedulingResult(task_to_vm=mapping)
 
@@ -109,11 +147,11 @@ class GeneticAlgorithmScheduler(Scheduler):
         self,
         population: List[List[int]],
         tasks: List[Task],
-        virtual_machines: List[VirtualMachine],
+        vm_states: List[VmStateView],
     ) -> List[int]:
         sample_size = min(self.tournament_size, len(population))
         candidates = self._rng.sample(population, sample_size)
-        winner = min(candidates, key=lambda c: self._objective(c, tasks, virtual_machines))
+        winner = min(candidates, key=lambda c: self._objective(c, tasks, vm_states))
         return list(winner)
 
     def _crossover(self, parent_a: List[int], parent_b: List[int]) -> tuple[List[int], List[int]]:
@@ -136,31 +174,62 @@ class GeneticAlgorithmScheduler(Scheduler):
         self,
         chromosome: List[int],
         tasks: List[Task],
-        virtual_machines: List[VirtualMachine],
+        vm_states: List[VmStateView],
     ) -> float:
-        vm_ready: Dict[int, float] = {
-            i: virtual_machines[i].availability_time for i in range(len(virtual_machines))
+        evaluation = self._evaluate_assignment(chromosome=chromosome, tasks=tasks, vm_states=vm_states)
+        return evaluation.objective
+
+    def _evaluate_assignment(
+        self,
+        chromosome: List[int],
+        tasks: List[Task],
+        vm_states: List[VmStateView],
+    ) -> AssignmentEvaluation:
+        if self._evaluator is None:
+            virtual_machines = [vm_state.vm for vm_state in vm_states]
+            pm_ids = sorted({vm.host_machine_id for vm in virtual_machines})
+            physical_machines = [
+                PhysicalMachine(
+                    machine_id=pm_id,
+                    capacity=ResourceCapacity(cpu_mips=1e12, memory_mb=1e12, bandwidth_mbps=1e12),
+                    base_power_watts=0.0,
+                )
+                for pm_id in pm_ids
+            ]
+            fallback_datacenter = Datacenter(
+                datacenter_id="ga_fallback",
+                physical_machines=physical_machines,
+                virtual_machines=virtual_machines,
+            )
+            self._evaluator = AssignmentEvaluator(
+                datacenter=fallback_datacenter,
+                energy_model=QuadraticEnergyModel(),
+                sla_model=ExponentialSLAPenaltyModel(
+                    SLAParameters(lambda_=1.0, theta=1.0, eta_max=2.0)
+                ),
+                fairness_model=FairnessModel(
+                    FairnessParameters(omega_1=0.5, omega_2=0.5, mu=1.0)
+                ),
+                fitness_parameters=FitnessParameters(
+                    w_energy=0.5,
+                    w_sla=0.5,
+                    xi=1.0,
+                    energy_norm_max=1.0,
+                    sla_norm_max=1.0,
+                ),
+            )
+
+        vm_ids = [vm_state.vm.vm_id for vm_state in vm_states]
+        assignment = {
+            tasks[index].task_id: vm_ids[chromosome[index]]
+            for index in range(len(tasks))
         }
-
-        makespan = 0.0
-        total_normalized_violation = 0.0
-
-        for task_index, task in sorted(enumerate(tasks), key=lambda p: (p[1].arrival_time, p[0])):
-            vm_index = chromosome[task_index]
-            vm = virtual_machines[vm_index]
-
-            start_time = max(task.arrival_time, vm_ready[vm_index])
-            duration = task.workload_mi / vm.capacity.cpu_mips
-            finish_time = start_time + duration
-            vm_ready[vm_index] = finish_time
-
-            makespan = max(makespan, finish_time)
-            violation = max(0.0, finish_time - task.deadline)
-            deadline = task.deadline if task.deadline > 0 else 1e-9
-            total_normalized_violation += violation / deadline
-
-        average_violation = total_normalized_violation / len(tasks)
-        return makespan + (self.sla_weight * average_violation)
+        return self._evaluator.evaluate(
+            waiting_tasks=tasks,
+            vm_states=vm_states,
+            assignment=assignment,
+            now=self._runtime_now,
+        )
 
 
 def create_scheduler(options: dict | None = None, seed: int | None = None) -> GeneticAlgorithmScheduler:

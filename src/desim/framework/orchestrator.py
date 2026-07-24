@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
 from ..algorithms.scheduling import Scheduler, SchedulingResult, VmQueuedTaskView, VmRunningTaskView, VmStateView
+from ..research.assignment_evaluator import AssignmentEvaluation
 from ..research.energy import (
     CornerPointCalibrationProvider,
     FixedCoefficientProvider,
@@ -31,6 +33,9 @@ from .state import SimulationState
 from .timing_metrics import TimingMetricsCollector
 from .utilization import UtilizationTracker
 from .vm_execution import VirtualMachineExecutionManager
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -203,6 +208,10 @@ class SimulationOrchestrator:
             app_config=app_config,
             normalization=normalization,
         )
+        self._configure_scheduler_objective(
+            configuration=configuration,
+            metrics_collector=metrics_collector,
+        )
         vm_execution.register(simulation)
         timing_metrics.register(simulation)
         utilization.register(simulation)
@@ -250,10 +259,16 @@ class SimulationOrchestrator:
         simulation.state.set("timing_metrics", timing_metrics)
         simulation.state.set("utilization_tracker", utilization)
         simulation.state.set("metrics_collector", metrics_collector)
+        simulation.state.set(
+            "debug_fitness_eval",
+            bool((app_config.scheduler.options if app_config is not None else {}).get("debug_fitness_evaluation", False)),
+        )
+        simulation.state.set("debug_fitness_predictions", [])
         if normalization is not None:
             simulation.state.set("normalization", normalization)
 
         simulation.run(until=configuration.epoch_length)
+        self._flush_prediction_debug_logs(state=simulation.state, force=True)
         utilization.finalize(end_time=configuration.epoch_length)
         metrics = metrics_collector.finalize()
         simulation.state.set("metrics", metrics)
@@ -364,13 +379,17 @@ class SimulationOrchestrator:
         state.set("waiting_tasks", waiting_tasks)
 
     def _on_scheduler_tick(self, simulation: Simulation, state: SimulationState, event: Event) -> None:
+        self._flush_prediction_debug_logs(state=state, force=False)
+
         waiting_tasks: List[Task] = list(state.get("waiting_tasks", []))
         if not waiting_tasks:
             return
 
         vm_execution: VirtualMachineExecutionManager = state.get("vm_execution")
         vm_states = self._build_vm_state_view(vm_execution=vm_execution, now=event.time)
+        self._set_scheduler_runtime_context(now=event.time)
         assignment = self.invoke_scheduler(waiting_tasks=waiting_tasks, vm_states=vm_states)
+        predicted = self._capture_scheduler_prediction()
         assignment_map: Dict[str, str] = state.get("assignment_map", {})
 
         waiting_by_id = {task.task_id: task for task in waiting_tasks}
@@ -407,6 +426,167 @@ class SimulationOrchestrator:
         state.set("assignment_map", assignment_map)
         state.set("assignment", SchedulingResult(task_to_vm=dict(assignment_map)))
         state.set("waiting_tasks", [task for task in waiting_tasks if task.task_id not in assigned_ids])
+
+        if predicted is not None:
+            self._record_prediction_debug_if_enabled(state=state, event=event, prediction=predicted)
+
+    def _configure_scheduler_objective(
+        self,
+        configuration: CloudConfiguration,
+        metrics_collector: MetricsCollector,
+    ) -> None:
+        configure = getattr(self.scheduler, "configure_paper_objective", None)
+        if callable(configure):
+            configure(
+                datacenter=configuration.datacenter,
+                fitness_parameters=metrics_collector.fitness_parameters,
+                energy_model=metrics_collector.energy_model,
+                sla_model=metrics_collector.sla_model,
+                fairness_model=metrics_collector.fairness_model,
+            )
+
+    def _set_scheduler_runtime_context(self, now: float) -> None:
+        setter = getattr(self.scheduler, "set_runtime_context", None)
+        if callable(setter):
+            setter(now=now)
+
+    def _capture_scheduler_prediction(self) -> AssignmentEvaluation | None:
+        getter = getattr(self.scheduler, "get_last_selected_evaluation", None)
+        if callable(getter):
+            return getter()
+        return None
+
+    def _record_prediction_debug_if_enabled(
+        self,
+        state: SimulationState,
+        event: Event,
+        prediction: AssignmentEvaluation,
+    ) -> None:
+        if not bool(state.get("debug_fitness_eval", False)):
+            return
+
+        pending: List[Dict[str, Any]] = list(state.get("debug_fitness_predictions", []))
+        pending.append(
+            {
+                "slot_time": event.time,
+                "prediction": prediction,
+            }
+        )
+        state.set("debug_fitness_predictions", pending)
+
+    def _flush_prediction_debug_logs(self, state: SimulationState, force: bool) -> None:
+        if not bool(state.get("debug_fitness_eval", False)):
+            return
+
+        pending: List[Dict[str, Any]] = list(state.get("debug_fitness_predictions", []))
+        if not pending:
+            return
+
+        metrics_collector: MetricsCollector = state.get("metrics_collector")
+        utilization: UtilizationTracker = state.get("utilization_tracker")
+        vm_execution: VirtualMachineExecutionManager = state.get("vm_execution")
+        configuration: CloudConfiguration = state.get("cloud_configuration")
+
+        completed_times: Dict[str, float] = dict(metrics_collector._completion_times)
+        unresolved: List[Dict[str, Any]] = []
+
+        for item in pending:
+            prediction: AssignmentEvaluation = item["prediction"]
+            predicted_ids = set(prediction.completion_times.keys())
+
+            if not force and not predicted_ids.issubset(completed_times.keys()):
+                unresolved.append(item)
+                continue
+
+            actual_completion_times: Dict[str, float] = {}
+            for task_id in predicted_ids:
+                if task_id in completed_times:
+                    actual_completion_times[task_id] = completed_times[task_id]
+                else:
+                    actual_completion_times[task_id] = configuration.epoch_length
+
+            actual_makespan = max(actual_completion_times.values()) if actual_completion_times else item["slot_time"]
+
+            objective_tasks: List[Task] = []
+            seen: set[str] = set()
+            for vm_plan in prediction.execution_plan.values():
+                for execution in vm_plan:
+                    if execution.task.task_id not in seen:
+                        objective_tasks.append(execution.task)
+                        seen.add(execution.task.task_id)
+
+            actual_sla = metrics_collector.sla_model.evaluate(
+                tasks=objective_tasks,
+                completion_times=actual_completion_times,
+            )
+            actual_fairness = metrics_collector.fairness_model.evaluate(actual_sla)
+
+            compare_end = min(prediction.horizon_end, configuration.epoch_length)
+            actual_energy_total = None
+            if compare_end > prediction.horizon_start:
+                window_energy = self._compute_window_energy(
+                    configuration=configuration,
+                    utilization=utilization,
+                    metrics_collector=metrics_collector,
+                    window_start=prediction.horizon_start,
+                    window_end=compare_end,
+                )
+                actual_energy_total = window_energy.total_energy
+
+            predicted_order = {
+                vm_id: [execution.task.task_id for execution in vm_plan]
+                for vm_id, vm_plan in prediction.execution_plan.items()
+            }
+            actual_order = {
+                vm_id: [
+                    record.task.task_id
+                    for record in vm_state.task_history
+                    if record.task.task_id in predicted_ids
+                ]
+                for vm_id, vm_state in vm_execution.vm_states.items()
+            }
+
+            logger.info(
+                "ga_prediction_debug",
+                extra={
+                    "slot_time": item["slot_time"],
+                    "predicted_makespan": prediction.makespan,
+                    "actual_makespan": actual_makespan,
+                    "predicted_energy": prediction.energy.total_energy,
+                    "actual_energy": actual_energy_total,
+                    "predicted_sla": prediction.sla.aggregate_penalty,
+                    "actual_sla": actual_sla.aggregate_penalty,
+                    "predicted_fairness": prediction.fairness.combined_fairness,
+                    "actual_fairness": actual_fairness.combined_fairness,
+                    "predicted_order": predicted_order,
+                    "actual_order": actual_order,
+                },
+            )
+
+        state.set("debug_fitness_predictions", unresolved)
+
+    @staticmethod
+    def _compute_window_energy(
+        configuration: CloudConfiguration,
+        utilization: UtilizationTracker,
+        metrics_collector: MetricsCollector,
+        window_start: float,
+        window_end: float,
+    ):
+        from ..research.assignment_evaluator import AssignmentEvaluator
+
+        helper = AssignmentEvaluator(
+            datacenter=configuration.datacenter,
+            energy_model=metrics_collector.energy_model,
+            sla_model=metrics_collector.sla_model,
+            fairness_model=metrics_collector.fairness_model,
+            fitness_parameters=metrics_collector.fitness_parameters,
+        )
+        return helper.compute_actual_window_energy(
+            utilization_snapshot=utilization.snapshot(),
+            window_start=window_start,
+            window_end=window_end,
+        )
 
     @staticmethod
     def _build_vm_state_view(vm_execution: VirtualMachineExecutionManager, now: float) -> List[VmStateView]:

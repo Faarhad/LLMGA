@@ -63,6 +63,8 @@ from .research.experiment_manager import (
 )
 from .research.fairness import FairnessModel, FairnessParameters, FairnessResult
 from .research.metrics_collector import FitnessParameters, MetricsCollector, MetricsSnapshot
+from .research.assignment_evaluator import AssignmentEvaluation, AssignmentEvaluator, PredictedTaskExecution
+from .research.paper_objective import compute_paper_fitness, compute_sla_objective
 from .research.random_benchmark import (
     RandomBenchmarkNormalization,
     RandomBenchmarkStatistics,
@@ -125,6 +127,11 @@ __all__ = [
     "FairnessResult",
     "FairnessModel",
     "FitnessParameters",
+    "PredictedTaskExecution",
+    "AssignmentEvaluation",
+    "AssignmentEvaluator",
+    "compute_sla_objective",
+    "compute_paper_fitness",
     "MetricsSnapshot",
     "MetricsCollector",
     "DatasetValidationError",

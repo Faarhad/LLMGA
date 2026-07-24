@@ -1,5 +1,6 @@
 ﻿import unittest
 
+from desim.framework.orchestrator import SimulationOrchestrator
 from desim.framework.models import PowerProfile, ResourceCapacity, Task, VirtualMachine
 from desim.algorithms.scheduling import (
     GeneticAlgorithmScheduler,
@@ -162,6 +163,79 @@ class TestGeneticAlgorithmScheduler(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             scheduler.schedule([infeasible_task], vm_states)
+
+    def test_records_queue_aware_prediction_after_scheduling(self) -> None:
+        data = {
+            "epoch_length": 10,
+            "slot_length": 1.0,
+            "datacenter": {
+                "datacenter_id": "dc1",
+                "physical_machines": [
+                    {
+                        "machine_id": "pm1",
+                        "cpu_mips": 5000,
+                        "memory_mb": 32768,
+                        "bandwidth_mbps": 10000,
+                        "base_power_watts": 100,
+                    }
+                ],
+                "virtual_machines": [
+                    {
+                        "vm_id": "vm1",
+                        "vm_type": "small",
+                        "host_machine_id": "pm1",
+                        "cpu_mips": 1000,
+                        "memory_mb": 2048,
+                        "bandwidth_mbps": 100,
+                        "idle_watts": 20,
+                        "max_watts": 60,
+                        "vcpu_count": 2,
+                        "availability_time": 0,
+                    },
+                    {
+                        "vm_id": "vm2",
+                        "vm_type": "small",
+                        "host_machine_id": "pm1",
+                        "cpu_mips": 1000,
+                        "memory_mb": 2048,
+                        "bandwidth_mbps": 100,
+                        "idle_watts": 20,
+                        "max_watts": 60,
+                        "vcpu_count": 2,
+                        "availability_time": 0,
+                    },
+                ],
+            },
+            "tasks": [
+                {
+                    "task_id": "t1",
+                    "workload_mi": 1000,
+                    "arrival_time": 0.0,
+                    "deadline": 10,
+                    "cpu_demand_mips": 500,
+                    "memory_demand_mb": 128,
+                    "io_size_mb": 10,
+                },
+                {
+                    "task_id": "t2",
+                    "workload_mi": 1000,
+                    "arrival_time": 0.0,
+                    "deadline": 10,
+                    "cpu_demand_mips": 500,
+                    "memory_demand_mb": 128,
+                    "io_size_mb": 10,
+                },
+            ],
+        }
+
+        scheduler = GeneticAlgorithmScheduler(population_size=12, generations=10, seed=2)
+        SimulationOrchestrator(scheduler=scheduler).run(data)
+        prediction = scheduler.get_last_selected_evaluation()
+
+        self.assertIsNotNone(prediction)
+        self.assertGreater(prediction.objective, 0.0)
+        self.assertIn("t1", prediction.completion_times)
+        self.assertIn("t2", prediction.completion_times)
 
 
 if __name__ == "__main__":
