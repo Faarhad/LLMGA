@@ -11,12 +11,15 @@ energy:
   alpha_share: 1.0
   coefficients:
     vm1:
-      alpha: 20.0
-      beta: 20.0
+      alpha: 26.0
+      beta: 26.0
     vm2:
-      alpha: 25.0
-      beta: 25.0
+      alpha: 21.0
+      beta: 21.0
     vm3:
+      alpha: 21.0
+      beta: 21.0
+    vm4:
       alpha: 20.0
       beta: 20.0
 
