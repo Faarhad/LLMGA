@@ -40,8 +40,10 @@ metrics:
   fitness_w_energy: 0.5
   fitness_w_sla: 0.5
   fitness_xi: 1.0
-  fitness_energy_norm_max: 1.0
-  fitness_sla_norm_max: 1.0
+
+random_benchmark:
+  enabled: true
+  sample_count: 100
 
 dataset:
   source: examples/sample_dataset_heavy.json

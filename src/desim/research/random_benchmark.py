@@ -3,8 +3,8 @@ import random
 from typing import Any, Dict, List, Optional
 
 from ..algorithms.scheduling import RandomScheduler, SchedulingResult
+from ..framework.configuration import AppConfig
 from ..framework.dataset_loading import DatasetLoader
-from ..framework.orchestrator import SimulationOrchestrator
 from .metrics_collector import MetricsSnapshot
 
 
@@ -31,6 +31,15 @@ class RandomBenchmarkStatistics:
     sla_objective_max_rand: float
 
 
+@dataclass(frozen=True)
+class RandomBenchmarkNormalization:
+    """Per-epoch normalization maxima derived from random benchmark schedules."""
+
+    energy_norm_max: float
+    sla_norm_max: float
+    sample_count: int
+
+
 class RandomScheduleBenchmarkRunner:
     """Runs random schedules and computes paper-style normalization benchmarks."""
 
@@ -51,9 +60,16 @@ class RandomScheduleBenchmarkRunner:
         self._uncertainty_repeats = uncertainty_repeats
         self._uncertainty_noise_std = uncertainty_noise_std
 
-    def run(self, dataset_source: Dict[str, Any] | str, k: int = 100) -> RandomBenchmarkStatistics:
+    def run(
+        self,
+        dataset_source: Dict[str, Any] | str,
+        k: int = 100,
+        app_config: AppConfig | None = None,
+    ) -> RandomBenchmarkStatistics:
         if k <= 0:
             raise ValueError("k must be > 0")
+
+        from ..framework.orchestrator import SimulationOrchestrator
 
         dataset = self._dataset_loader.load(dataset_source)
         rng = random.Random(self._random_seed)
@@ -64,7 +80,11 @@ class RandomScheduleBenchmarkRunner:
             schedule_seed = rng.randint(0, 2**31 - 1)
             scheduler = RandomScheduler(seed=schedule_seed)
             orchestrator = SimulationOrchestrator(scheduler=scheduler, dataset_loader=self._dataset_loader)
-            state = orchestrator.run(dataset)
+            state = orchestrator.run(
+                dataset,
+                app_config=app_config,
+                use_random_benchmark=False,
+            )
             runtime = state.get("orchestrator_runtime")
             metrics: MetricsSnapshot = runtime.metrics
             metrics_collector = state.get("metrics_collector")
@@ -108,3 +128,34 @@ class RandomScheduleBenchmarkRunner:
             noisy_values.append(base_fitness + noise)
 
         return max(noisy_values) - min(noisy_values)
+
+
+class RandomBenchmarkNormalizer:
+    """Computes per-epoch normalization maxima from random feasible schedules."""
+
+    def __init__(
+        self,
+        dataset_loader: Optional[DatasetLoader] = None,
+        random_seed: int = 0,
+    ) -> None:
+        self._runner = RandomScheduleBenchmarkRunner(
+            dataset_loader=dataset_loader,
+            random_seed=random_seed,
+        )
+
+    def compute(
+        self,
+        dataset_source: Dict[str, Any] | str,
+        app_config: AppConfig,
+        sample_count: int,
+    ) -> RandomBenchmarkNormalization:
+        stats = self._runner.run(
+            dataset_source=dataset_source,
+            k=sample_count,
+            app_config=app_config,
+        )
+        return RandomBenchmarkNormalization(
+            energy_norm_max=max(stats.energy_max_rand, 1e-12),
+            sla_norm_max=max(stats.sla_objective_max_rand, 1e-12),
+            sample_count=stats.sample_count,
+        )

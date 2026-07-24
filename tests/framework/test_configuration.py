@@ -24,10 +24,9 @@ class TestConfiguration(unittest.TestCase):
                     "fitness_w_energy": 0.6,
                     "fitness_w_sla": 0.4,
                     "fitness_xi": 1,
-                    "fitness_energy_norm_max": 100,
-                    "fitness_sla_norm_max": 50,
                 },
                 "random_seeds": {"global_seed": 123, "scheduler_seed": 456},
+                "random_benchmark": {"enabled": True, "sample_count": 50},
                 "plugins": [
                     {
                         "name": "custom_mutation",
@@ -42,6 +41,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(cfg.dataset.source, "data/dataset.json")
         self.assertEqual(cfg.scheduler.name, "random")
         self.assertEqual(cfg.random_seeds.scheduler_seed, 456)
+        self.assertEqual(cfg.random_benchmark.sample_count, 50)
         self.assertEqual(len(cfg.plugins), 1)
         self.assertEqual(cfg.plugins[0].name, "custom_mutation")
 
@@ -65,6 +65,9 @@ class TestConfiguration(unittest.TestCase):
           fairness_omega_2: 0.3
         random_seeds:
           global_seed: 11
+        random_benchmark:
+          enabled: true
+          sample_count: 75
         plugins:
           - name: plugin_a
             enabled: true
@@ -78,6 +81,7 @@ class TestConfiguration(unittest.TestCase):
 
         self.assertEqual(cfg.dataset.format, "json")
         self.assertEqual(cfg.scheduler.options["seed"], 7)
+        self.assertEqual(cfg.random_benchmark.sample_count, 75)
         self.assertEqual(cfg.plugins[0].entrypoint, "pkg.plugin:main")
 
     def test_dataset_is_required(self) -> None:

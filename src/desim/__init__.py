@@ -7,6 +7,7 @@ from .framework.configuration import (
     EnergyConfig,
     MetricsConfig,
     PluginConfig,
+    RandomBenchmarkConfig,
     RandomSeedsConfig,
     SchedulerConfig,
     SimulationConfig,
@@ -63,7 +64,9 @@ from .research.experiment_manager import (
 from .research.fairness import FairnessModel, FairnessParameters, FairnessResult
 from .research.metrics_collector import FitnessParameters, MetricsCollector, MetricsSnapshot
 from .research.random_benchmark import (
+    RandomBenchmarkNormalization,
     RandomBenchmarkStatistics,
+    RandomBenchmarkNormalizer,
     RandomScheduleBenchmarkRunner,
     RandomScheduleRunResult,
 )
@@ -135,11 +138,14 @@ __all__ = [
     "MetricsConfig",
     "DatasetConfig",
     "RandomSeedsConfig",
+    "RandomBenchmarkConfig",
     "PluginConfig",
     "AppConfig",
     "AppConfigLoader",
     "RandomScheduleRunResult",
     "RandomBenchmarkStatistics",
+    "RandomBenchmarkNormalization",
+    "RandomBenchmarkNormalizer",
     "RandomScheduleBenchmarkRunner",
     "ExperimentRunner",
     "ExperimentRunRecord",

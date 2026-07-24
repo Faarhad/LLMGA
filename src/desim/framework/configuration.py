@@ -40,8 +40,6 @@ class MetricsConfig:
     fitness_w_energy: float = 0.5
     fitness_w_sla: float = 0.5
     fitness_xi: float = 1.0
-    fitness_energy_norm_max: float = 1.0
-    fitness_sla_norm_max: float = 1.0
 
     def __post_init__(self) -> None:
         if self.sla_lambda <= 0 or self.sla_theta <= 0 or self.sla_eta_max <= 0:
@@ -58,8 +56,16 @@ class MetricsConfig:
             raise ConfigurationError("metrics.fitness w_energy + w_sla must equal 1")
         if self.fitness_xi < 0:
             raise ConfigurationError("metrics.fitness xi must be >= 0")
-        if self.fitness_energy_norm_max <= 0 or self.fitness_sla_norm_max <= 0:
-            raise ConfigurationError("metrics.fitness normalization maxima must be > 0")
+
+
+@dataclass(frozen=True)
+class RandomBenchmarkConfig:
+    enabled: bool = True
+    sample_count: int = 100
+
+    def __post_init__(self) -> None:
+        if self.sample_count <= 0:
+            raise ConfigurationError("random_benchmark.sample_count must be > 0")
 
 
 @dataclass(frozen=True)
@@ -98,6 +104,7 @@ class AppConfig:
     metrics: MetricsConfig
     dataset: DatasetConfig
     random_seeds: RandomSeedsConfig = field(default_factory=RandomSeedsConfig)
+    random_benchmark: RandomBenchmarkConfig = field(default_factory=RandomBenchmarkConfig)
     plugins: List[PluginConfig] = field(default_factory=list)
 
 
@@ -129,6 +136,7 @@ class AppConfigLoader:
         dataset_raw = self._as_mapping(raw["dataset"], "dataset")
 
         random_seeds_raw = self._as_mapping(raw.get("random_seeds", {}), "random_seeds")
+        random_benchmark_raw = self._as_mapping(raw.get("random_benchmark", {}), "random_benchmark")
         plugins_raw = raw.get("plugins", [])
         if not isinstance(plugins_raw, list):
             raise ConfigurationError("plugins must be a list")
@@ -158,8 +166,6 @@ class AppConfigLoader:
                 fitness_w_energy=float(metrics_raw.get("fitness_w_energy", 0.5)),
                 fitness_w_sla=float(metrics_raw.get("fitness_w_sla", 0.5)),
                 fitness_xi=float(metrics_raw.get("fitness_xi", 1.0)),
-                fitness_energy_norm_max=float(metrics_raw.get("fitness_energy_norm_max", 1.0)),
-                fitness_sla_norm_max=float(metrics_raw.get("fitness_sla_norm_max", 1.0)),
             ),
             dataset=DatasetConfig(
                 source=str(dataset_raw.get("source", "")),
@@ -168,6 +174,10 @@ class AppConfigLoader:
             random_seeds=RandomSeedsConfig(
                 global_seed=self._optional_int(random_seeds_raw.get("global_seed")),
                 scheduler_seed=self._optional_int(random_seeds_raw.get("scheduler_seed")),
+            ),
+            random_benchmark=RandomBenchmarkConfig(
+                enabled=bool(random_benchmark_raw.get("enabled", True)),
+                sample_count=int(random_benchmark_raw.get("sample_count", 100)),
             ),
             plugins=plugins,
         )

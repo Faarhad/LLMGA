@@ -12,6 +12,7 @@ from ..research.energy import (
 from ..research.fairness import FairnessModel, FairnessParameters
 from ..research.metrics_collector import MetricsCollector, MetricsSnapshot
 from ..research.metrics_collector import FitnessParameters
+from ..research.random_benchmark import RandomBenchmarkNormalization, RandomBenchmarkNormalizer
 from ..research.sla import ExponentialSLAPenaltyModel, SLAParameters
 from .configuration import AppConfig
 from .dataset_loading import DatasetLoader
@@ -175,10 +176,16 @@ class SimulationOrchestrator:
         self,
         dataset_source: Dict[str, Any] | str | Path,
         app_config: AppConfig | None = None,
+        use_random_benchmark: bool = True,
     ) -> SimulationState:
         dataset = self.load_dataset(dataset_source)
         configuration = self.create_cloud_configuration(dataset)
         slot_length = self._resolve_slot_length(dataset)
+        normalization = self._resolve_dynamic_normalization(
+            dataset_source=dataset,
+            app_config=app_config,
+            use_random_benchmark=use_random_benchmark,
+        )
 
         simulation = Simulation()
         vm_execution = VirtualMachineExecutionManager.from_virtual_machines(
@@ -194,6 +201,7 @@ class SimulationOrchestrator:
             configuration=configuration,
             utilization_tracker=utilization,
             app_config=app_config,
+            normalization=normalization,
         )
         vm_execution.register(simulation)
         timing_metrics.register(simulation)
@@ -242,6 +250,8 @@ class SimulationOrchestrator:
         simulation.state.set("timing_metrics", timing_metrics)
         simulation.state.set("utilization_tracker", utilization)
         simulation.state.set("metrics_collector", metrics_collector)
+        if normalization is not None:
+            simulation.state.set("normalization", normalization)
 
         simulation.run(until=configuration.epoch_length)
         utilization.finalize(end_time=configuration.epoch_length)
@@ -266,6 +276,7 @@ class SimulationOrchestrator:
         configuration: CloudConfiguration,
         utilization_tracker: UtilizationTracker,
         app_config: AppConfig | None,
+        normalization: RandomBenchmarkNormalization | None,
     ) -> MetricsCollector:
         if app_config is None:
             return MetricsCollector(
@@ -292,8 +303,8 @@ class SimulationOrchestrator:
             w_energy=app_config.metrics.fitness_w_energy,
             w_sla=app_config.metrics.fitness_w_sla,
             xi=app_config.metrics.fitness_xi,
-            energy_norm_max=app_config.metrics.fitness_energy_norm_max,
-            sla_norm_max=app_config.metrics.fitness_sla_norm_max,
+            energy_norm_max=normalization.energy_norm_max if normalization is not None else 1.0,
+            sla_norm_max=normalization.sla_norm_max if normalization is not None else 1.0,
         )
 
         return MetricsCollector(
@@ -303,6 +314,28 @@ class SimulationOrchestrator:
             sla_model=sla_model,
             fairness_model=fairness_model,
             fitness_parameters=fitness_parameters,
+        )
+
+    def _resolve_dynamic_normalization(
+        self,
+        dataset_source: Dict[str, Any] | str | Path,
+        app_config: AppConfig | None,
+        use_random_benchmark: bool,
+    ) -> RandomBenchmarkNormalization | None:
+        if app_config is None or not use_random_benchmark:
+            return None
+        if not app_config.random_benchmark.enabled:
+            return None
+
+        benchmark_seed = app_config.random_seeds.global_seed
+        normalizer = RandomBenchmarkNormalizer(
+            dataset_loader=self.dataset_loader,
+            random_seed=benchmark_seed if benchmark_seed is not None else 0,
+        )
+        return normalizer.compute(
+            dataset_source=dataset_source,
+            app_config=app_config,
+            sample_count=app_config.random_benchmark.sample_count,
         )
 
     @staticmethod
