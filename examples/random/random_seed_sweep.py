@@ -51,7 +51,7 @@ def main() -> None:
         config.scheduler.options["seed"] = seed
         scheduler = build_scheduler(config)
         orchestrator = SimulationOrchestrator(scheduler=scheduler)
-        state = orchestrator.run(dataset)
+        state = orchestrator.run(dataset, app_config=config)
         metrics = state.get("metrics")
 
         totals["makespan"] += metrics.makespan

@@ -3,7 +3,17 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from ..algorithms.scheduling import Scheduler, SchedulingResult, VmQueuedTaskView, VmRunningTaskView, VmStateView
+from ..research.energy import (
+    CornerPointCalibrationProvider,
+    FixedCoefficientProvider,
+    QuadraticEnergyModel,
+    VmPowerCoefficients,
+)
+from ..research.fairness import FairnessModel, FairnessParameters
 from ..research.metrics_collector import MetricsCollector, MetricsSnapshot
+from ..research.metrics_collector import FitnessParameters
+from ..research.sla import ExponentialSLAPenaltyModel, SLAParameters
+from .configuration import AppConfig
 from .dataset_loading import DatasetLoader
 from .event import Event
 from .models import (
@@ -161,7 +171,11 @@ class SimulationOrchestrator:
                 )
             )
 
-    def run(self, dataset_source: Dict[str, Any] | str | Path) -> SimulationState:
+    def run(
+        self,
+        dataset_source: Dict[str, Any] | str | Path,
+        app_config: AppConfig | None = None,
+    ) -> SimulationState:
         dataset = self.load_dataset(dataset_source)
         configuration = self.create_cloud_configuration(dataset)
         slot_length = self._resolve_slot_length(dataset)
@@ -176,9 +190,10 @@ class SimulationOrchestrator:
         utilization = UtilizationTracker.from_virtual_machines(
             configuration.datacenter.virtual_machines
         )
-        metrics_collector = MetricsCollector(
+        metrics_collector = self._build_metrics_collector(
             configuration=configuration,
             utilization_tracker=utilization,
+            app_config=app_config,
         )
         vm_execution.register(simulation)
         timing_metrics.register(simulation)
@@ -245,6 +260,70 @@ class SimulationOrchestrator:
         simulation.state.set("assignment", runtime.assignment)
         simulation.state.set("orchestrator_runtime", runtime)
         return simulation.state
+
+    def _build_metrics_collector(
+        self,
+        configuration: CloudConfiguration,
+        utilization_tracker: UtilizationTracker,
+        app_config: AppConfig | None,
+    ) -> MetricsCollector:
+        if app_config is None:
+            return MetricsCollector(
+                configuration=configuration,
+                utilization_tracker=utilization_tracker,
+            )
+
+        energy_model = self._build_energy_model(app_config)
+        sla_model = ExponentialSLAPenaltyModel(
+            SLAParameters(
+                lambda_=app_config.metrics.sla_lambda,
+                theta=app_config.metrics.sla_theta,
+                eta_max=app_config.metrics.sla_eta_max,
+            )
+        )
+        fairness_model = FairnessModel(
+            FairnessParameters(
+                omega_1=app_config.metrics.fairness_omega_1,
+                omega_2=app_config.metrics.fairness_omega_2,
+                mu=app_config.metrics.fairness_mu,
+            )
+        )
+        fitness_parameters = FitnessParameters(
+            w_energy=app_config.metrics.fitness_w_energy,
+            w_sla=app_config.metrics.fitness_w_sla,
+            xi=app_config.metrics.fitness_xi,
+            energy_norm_max=app_config.metrics.fitness_energy_norm_max,
+            sla_norm_max=app_config.metrics.fitness_sla_norm_max,
+        )
+
+        return MetricsCollector(
+            configuration=configuration,
+            utilization_tracker=utilization_tracker,
+            energy_model=energy_model,
+            sla_model=sla_model,
+            fairness_model=fairness_model,
+            fitness_parameters=fitness_parameters,
+        )
+
+    @staticmethod
+    def _build_energy_model(app_config: AppConfig) -> QuadraticEnergyModel:
+        raw_coefficients = app_config.energy.coefficients
+        if raw_coefficients:
+            coefficients: Dict[str, VmPowerCoefficients] = {}
+            for vm_id, values in raw_coefficients.items():
+                if "alpha" not in values or "beta" not in values:
+                    raise ValueError(
+                        f"energy.coefficients.{vm_id} must include numeric alpha and beta"
+                    )
+                coefficients[vm_id] = VmPowerCoefficients(
+                    alpha=float(values["alpha"]),
+                    beta=float(values["beta"]),
+                )
+            provider = FixedCoefficientProvider(coefficients=coefficients)
+        else:
+            provider = CornerPointCalibrationProvider(alpha_share=app_config.energy.alpha_share)
+
+        return QuadraticEnergyModel(coefficient_provider=provider)
 
     def _on_task_arrival(self, state: SimulationState, event: Event) -> None:
         waiting_tasks = list(state.get("waiting_tasks", []))

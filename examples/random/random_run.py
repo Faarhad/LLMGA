@@ -37,7 +37,7 @@ def main() -> None:
     scheduler = build_scheduler(config)
     orchestrator = SimulationOrchestrator(scheduler=scheduler)
 
-    state = orchestrator.run(dataset)
+    state = orchestrator.run(dataset, app_config=config)
     metrics = state.get("metrics")
 
     print("Makespan:", metrics.makespan)
